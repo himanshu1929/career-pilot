@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  section[id] {
+    scroll-margin-top: 80px;
+  }
+
+  :root {
+    --bg-primary: #0D1117;
+    --bg-card: #161B22;
+    --border-neutral: #30363D;
+    --text-primary: #F3F4F6;
+    --text-muted: #9CA3AF;
+    --accent-blue: #2563EB;
+    --accent-green: #16A34A;
+    --accent-amber: #D97706;
+    --accent-red: #DC2626;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-x: hidden;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* GitHub Desktop / Linear / Raycast Style Minimal Cards */
+.glass-card {
+  background: #161B22;
+  border: 1px solid #30363D;
+  border-radius: 8px;
+}
+
+.glass-card-hover {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.glass-card-hover:hover {
+  background: #1c2128;
+  border-color: #444c56;
+}
+
+.glass-nav {
+  background: rgba(13, 17, 23, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid #30363D;
+}
+
+/* Solid Professional Blue Primary CTA Button */
+.btn-primary-cta {
+  background: #2563EB;
+  color: #ffffff;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.btn-primary-cta:hover {
+  background: #1d4ed8;
+}
+
+/* Secondary Button: Outlined Dark Gray */
+.btn-secondary {
+  background: #161B22;
+  border: 1px solid #30363D;
+  color: #F3F4F6;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background: #21262d;
+  color: #ffffff;
+  border-color: #444c56;
+}
+
+/* Clean text utilities (No gradients) */
+.text-gradient {
+  color: #F3F4F6;
+}
+
+.text-gradient-cyan {
+  color: #2563EB;
+}
+
+.text-gradient-emerald {
+  color: #16A34A;
+}
+
+/* Glow Elements Disabled Completely */
+.glow-bg {
+  display: none !important;
+}
+
+/* Minimal Grid Overlay */
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0D1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #30363D;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444c56;
+}

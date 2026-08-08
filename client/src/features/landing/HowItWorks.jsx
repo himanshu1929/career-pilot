@@ -12,7 +12,7 @@ export const HowItWorks = ({ onLaunchApp }) => {
     {
       stepNum: "02",
       icon: <Sparkles className="w-5 h-5 text-green-500" />,
-      title: "Resume Analyzer",
+      title: "Resumes",
       desc: "See what's working on your resume and what needs fixing to score higher."
     },
     {

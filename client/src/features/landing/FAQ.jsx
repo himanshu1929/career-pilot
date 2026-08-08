@@ -7,28 +7,28 @@ export const FAQ = () => {
 
   const faqs = [
     {
-      q: "Is CareerPilot free?",
-      a: "Yes! CareerPilot features a built-in interactive demo mode and instant sample analysis, allowing full exploration of all core modules completely free of charge."
+      q: "Is CareerPilot free to use?",
+      a: "Yes! You can analyze resumes, match job descriptions, generate learning roadmaps, and practice AI mock interviews completely free with our built-in interactive demo mode and instant sample analysis tools."
     },
     {
-      q: "Which AI powers CareerPilot?",
-      a: "CareerPilot is powered by Google Gemini AI (via the official @google/genai SDK), configured with structured outputs for high-precision ATS parsing, job matching, and mock interview evaluation."
+      q: "Which resume formats are supported?",
+      a: "Simply upload your resume in PDF format."
     },
     {
-      q: "Is my resume stored?",
-      a: "Your privacy is guaranteed. All analysis reports, version histories, and job matches exist strictly inside your local browser storage using a single-source-of-truth architecture. We do not store or sell your resume data."
+      q: "How does CareerPilot help me pass ATS filters?",
+      a: "CareerPilot scans your resume against real recruiter Applicant Tracking System (ATS) criteria. It pinpoint formatting errors, weak action verbs, and missing job keywords so you can fix them before applying."
     },
     {
-      q: "What file formats are supported?",
-      a: "Currently, CareerPilot supports standard single-column or multi-column PDF resume uploads. You can also paste raw resume text directly into the direct text evaluation endpoint."
+      q: "Do I need to re-upload my resume for every feature?",
+      a: "No! Once you analyze a resume, it automatically becomes your active workspace resume. Moving to Job Matcher, Learning Roadmap, or Mock Interview reuses that resume so you never have to upload it again."
     },
     {
-      q: "Can I compare resume versions?",
-      a: "Yes! CareerPilot features a built-in Resume Iteration Workflow. Re-analyzing an updated version of a stored resume generates a side-by-side comparison showing score gains and resolved weaknesses."
+      q: "Can I compare an updated resume with an older version?",
+      a: "Yes! When you upload a revised version of a resume, CareerPilot's built-in comparison feature shows a side-by-side breakdown tracking your score increases, resolved weaknesses, and newly added keywords."
     },
     {
-      q: "Can I target different job roles?",
-      a: "Absolutely. The Job Matcher allows you to evaluate your candidate profile against any number of distinct job descriptions to pinpoint missing keywords and tailor bullet points for each role."
+      q: "Are my uploaded resumes and personal details secure?",
+      a: "Yes. CareerPilot protects your privacy using secure Firebase Authentication and Cloud Firestore encryption. Your data is strictly linked to your private account and is never shared or sold."
     }
   ];
 

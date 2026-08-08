@@ -136,7 +136,8 @@ REQUIRED JSON STRUCTURE:
       "resources": [
         { "type": "doc", "label": "Official Documentation", "title": "<Real Official Docs>", "source": "<Platform Name>", "url": "<Real Valid URL>", "icon": "📘" },
         { "type": "video", "label": "Best YouTube Course", "title": "<Real Video>", "source": "<Creator Name>", "url": "<Real Valid URL>", "icon": "🎥" },
-        { "type": "practice", "label": "Practice Platform", "title": "<Practice Platform>", "source": "<Platform Name>", "url": "<Real Valid URL>", "icon": "💻" },
+        { "type":cd
+          "practice", "label": "Practice Platform", "title": "<Practice Platform>", "source": "<Platform Name>", "url": "<Real Valid URL>", "icon": "💻" },
         { "type": "article", "label": "Recommended Article", "title": "<Article>", "source": "<Platform Name>", "url": "<Real Valid URL>", "icon": "📰" },
         { "type": "github", "label": "GitHub Examples", "title": "<GitHub Code>", "source": "GitHub", "url": "<Real Valid URL>", "icon": "⚡" }
       ]

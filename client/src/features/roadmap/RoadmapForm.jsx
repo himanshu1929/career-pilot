@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Map, Sparkles, ArrowRight, Loader2, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { PageHeader } from '../../components/layout/PageContainer';
 
 export const RoadmapForm = ({ 
   onGenerateRoadmap, 
@@ -38,47 +39,24 @@ export const RoadmapForm = ({
       if (Array.isArray(roadmapSeed.missingSkills)) setMissingSkills(roadmapSeed.missingSkills);
     } else if (location.state?.prefilledRole) {
       setTargetRole(location.state.prefilledRole);
-      if (location.state?.prefilledSkills) {
-        setCurrentSkills(location.state.prefilledSkills);
-      }
     }
   }, [isFromJobMatcher, roadmapSeed, location.state]);
 
   const samplePresets = [
     {
-      role: 'Frontend Engineer (React & TypeScript)',
-      skills: 'JavaScript, React, HTML5, CSS3, Git',
-      level: 'Entry-Level (0-2 YOE)'
+      role: 'Frontend Developer',
+      skills: 'React, JavaScript, HTML, CSS, Git',
+      level: 'Junior (0-2 YOE)'
     },
     {
-      role: 'Backend Engineer (Java & Spring Boot)',
-      skills: 'Java 17, OOP, SQL, REST APIs, Git',
-      level: 'Student / Intern'
+      role: 'Backend Developer',
+      skills: 'Node.js, Express, MongoDB, REST APIs, SQL',
+      level: 'Junior (0-2 YOE)'
     },
     {
-      role: 'AI & ML Engineer (Python & PyTorch)',
-      skills: 'Python 3, NumPy, Pandas, Scikit-Learn, Math',
-      level: 'Entry-Level (0-2 YOE)'
-    },
-    {
-      role: 'DevOps & Cloud (AWS & Terraform)',
-      skills: 'Linux Bash, Networking, Git, AWS EC2',
-      level: 'Mid-Level (2-4 YOE)'
-    },
-    {
-      role: 'Android Developer (Kotlin & Compose)',
-      skills: 'Kotlin, Java, Android Studio, Git',
-      level: 'Entry-Level (0-2 YOE)'
-    },
-    {
-      role: 'Data Scientist (Python & SQL)',
-      skills: 'Python, SQL, Pandas, NumPy, Statistics',
-      level: 'Student / Intern'
-    },
-    {
-      role: 'Cybersecurity Engineer',
-      skills: 'Linux, Networking, Wireshark, Python',
-      level: 'Entry-Level (0-2 YOE)'
+      role: 'Full Stack Engineer',
+      skills: 'React, Node.js, TypeScript, PostgreSQL, Docker',
+      level: 'Junior (0-2 YOE)'
     },
     {
       role: 'GATE CSE / CS Fundamentals',
@@ -126,21 +104,13 @@ export const RoadmapForm = ({
   return (
     <div className="w-full space-y-8 animate-fadeIn">
       
-      {/* Standardized Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#30363D]">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-purple-400 mb-2">
-            <Map className="w-3.5 h-3.5" />
-            <span>AI Skill Gap & Roadmap Generator</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Personalized Skill Gap Roadmap
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Generate custom step-by-step technical learning paths based on your current skills and target role.
-          </p>
-        </div>
-      </div>
+      {/* Standardized Page Header */}
+      <PageHeader
+        title="Learning Roadmap"
+        subtitle="Generate a personalized roadmap based on your skill gaps."
+        backTo="/app/dashboard"
+        backLabel="Back to Dashboard"
+      />
 
       {/* Success Banner when navigating from Job Matcher */}
       {isFromJobMatcher && roadmapSeed && (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Compass, Sparkles, ArrowUp } from 'lucide-react';
+import { CareerPilotLogo } from '../common/CareerPilotLogo';
 
 export const Footer = ({ onNavigateApp }) => {
   const handleScrollTop = () => {
@@ -15,7 +16,7 @@ export const Footer = ({ onNavigateApp }) => {
   };
 
   const quickLinks = [
-    { label: "Resume Analyzer", target: "features" },
+    { label: "Resumes", target: "features" },
     { label: "Job Matcher", target: "features" },
     { label: "Skill Gap & Roadmap", target: "features" },
     { label: "AI Mock Interview", target: "features" }
@@ -26,6 +27,7 @@ export const Footer = ({ onNavigateApp }) => {
     "Vite",
     "Node.js",
     "Express",
+    "Firebase",
     "Google Gemini"
   ];
 
@@ -38,14 +40,11 @@ export const Footer = ({ onNavigateApp }) => {
           
           {/* Brand Info */}
           <div className="md:col-span-2 space-y-3">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={handleScrollTop}>
-              <div className="w-8 h-8 rounded bg-[#161B22] border border-[#30363D] flex items-center justify-center">
-                <Compass className="w-4 h-4 text-blue-500" />
-              </div>
-              <span className="text-base font-bold tracking-tight text-white flex items-center gap-1">
-                Career<span className="text-blue-500">Pilot</span>
-              </span>
-            </div>
+            <CareerPilotLogo 
+              size={36} 
+              onClick={handleScrollTop} 
+              wordmarkClassName="text-lg font-bold tracking-tight"
+            />
 
             <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
               Your AI career copilot. Score your resume, match job descriptions, follow custom skill roadmaps, and practice mock interviews.

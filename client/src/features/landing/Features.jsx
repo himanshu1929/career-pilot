@@ -6,7 +6,7 @@ export const Features = () => {
   const featureList = [
     {
       icon: <FileText className="w-6 h-6 text-indigo-400" />,
-      title: "Resume Analyzer",
+      title: "Resumes",
       description: "See what's working on your resume and what needs fixing to get more callbacks.",
       gradient: "from-indigo-500/20 to-purple-500/5",
       badge: "Gemini Powered"

@@ -25,7 +25,7 @@ export const RecentActivity = ({ onNavigate }) => {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
           <Clock className="w-4 h-4 text-blue-500" />
-          Recent Workspace Activity
+          Recent Activity
         </h2>
         {activities.length > 0 && (
           <span className="text-xs text-gray-400 font-mono">{activities.length} Recorded Actions</span>
@@ -63,24 +63,17 @@ export const RecentActivity = ({ onNavigate }) => {
           ))}
         </div>
       ) : (
-        /* Empty State Card when zero activities exist */
-        <div className="bg-[#161B22] rounded-xl p-8 border border-[#30363D] text-center space-y-4 shadow-sm">
-          <div className="w-12 h-12 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center mx-auto text-blue-400">
-            <Sparkles className="w-6 h-6" />
+        /* Compact Empty State Card when zero activities exist */
+        <div className="bg-[#161B22] rounded-xl p-5 border border-[#30363D] flex items-center gap-3.5 shadow-sm">
+          <div className="w-10 h-10 rounded-lg bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
+            <Clock className="w-5 h-5" />
           </div>
-          <div className="space-y-1 max-w-sm mx-auto">
-            <h3 className="text-base font-bold text-white tracking-tight">No recent activity yet</h3>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              Start by scanning your resume or creating your personalized career roadmap to build your profile.
+          <div>
+            <h3 className="text-sm font-bold text-white tracking-tight">Your career journey starts here.</h3>
+            <p className="text-xs text-gray-400 leading-relaxed mt-0.5">
+              Your resume analyses, job matches, roadmaps, and interviews will appear here after you begin using CareerPilot.
             </p>
           </div>
-          <button
-            onClick={() => onNavigate('resume')}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <span>Scan Your First Resume</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
         </div>
       )}
     </div>

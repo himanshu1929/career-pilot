@@ -136,10 +136,10 @@ export const ResumeUploader = ({ onUploadComplete, initialFile, uploadedFile, se
           onDragLeave={handleDrag}
           onDrop={handleDrop}
           onClick={() => inputRef.current && inputRef.current.click()}
-          className={`relative border-2 border-dashed rounded-lg p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 ${
+          className={`relative border-2 border-dashed rounded-xl p-6 sm:p-9 text-center cursor-pointer transition-all duration-200 ${
             dragActive
-              ? 'border-blue-500 bg-blue-600/10'
-              : 'border-[#30363D] hover:border-gray-500 bg-[#161B22]'
+              ? 'border-blue-500 bg-blue-600/10 shadow-lg shadow-blue-500/10 scale-[1.01]'
+              : 'border-[#30363D] hover:border-gray-400 bg-[#161B22]'
           }`}
           role="button"
           tabIndex={0}
@@ -151,25 +151,37 @@ export const ResumeUploader = ({ onUploadComplete, initialFile, uploadedFile, se
           }}
           aria-label="Drop PDF resume here or click to browse"
         >
-          <div className="w-14 h-14 rounded bg-[#0D1117] border border-[#30363D] flex items-center justify-center mx-auto mb-4 text-blue-500">
-            <Upload className="w-7 h-7" />
+          {/* Upload Icon */}
+          <div className={`w-12 h-12 rounded-xl bg-[#0D1117] border border-[#30363D] flex items-center justify-center mx-auto mb-3 text-blue-500 transition-transform ${dragActive ? 'scale-110 text-blue-400 animate-bounce' : ''}`}>
+            <Upload className="w-6 h-6" />
           </div>
 
-          <h3 className="text-lg font-bold text-white mb-1">
-            Upload Your Resume PDF
+          {/* Title & Subtitle */}
+          <h3 className="text-base sm:text-lg font-bold text-white mb-1 tracking-tight">
+            {dragActive ? 'Drop your resume here.' : 'Upload Your Resume'}
           </h3>
 
           <p className="text-xs text-gray-400 max-w-sm mx-auto mb-4 leading-relaxed">
-            Drag and drop your single or multi-column PDF resume here, or click to browse from your device.
+            {dragActive ? 'Release to start analyzing' : 'Drag & drop your PDF here or browse from your device.'}
           </p>
 
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs rounded transition-colors shadow-sm">
-            <FileText className="w-4 h-4" />
-            <span>Select PDF File</span>
+          {/* Upload Resume Button */}
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all shadow-md hover:shadow-blue-500/20">
+            <Upload className="w-4 h-4" />
+            <span>Upload Resume</span>
           </div>
 
-          <div className="mt-4 text-[11px] text-gray-400 font-mono">
-            Supported format: .PDF (Max 10MB)
+          {/* Feature Checklist Below Button */}
+          <div className="mt-5 pt-4 border-t border-[#30363D]/60 flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-[11px] font-medium text-gray-400">
+            <span className="flex items-center gap-1"><span className="text-emerald-400 font-bold">✓</span> ATS Score</span>
+            <span className="flex items-center gap-1"><span className="text-emerald-400 font-bold">✓</span> Keyword Match</span>
+            <span className="flex items-center gap-1"><span className="text-emerald-400 font-bold">✓</span> Formatting Review</span>
+            <span className="flex items-center gap-1"><span className="text-emerald-400 font-bold">✓</span> AI Suggestions</span>
+          </div>
+
+          {/* File Restriction Note */}
+          <div className="mt-3 text-[10px] text-gray-500 font-mono">
+            PDF only • Maximum 10 MB
           </div>
         </div>
       ) : (

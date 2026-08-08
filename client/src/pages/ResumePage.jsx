@@ -9,6 +9,7 @@ import { GuidedJourneyBanner } from '../components/layout/GuidedJourneyBanner';
 import { QuotaLimitBanner } from '../components/common/QuotaLimitBanner';
 import { mockResumeAnalysis } from '../utils/mockData';
 import { computeResumeHash } from '../utils/historyStorage';
+import { PageContainer, PageHeader } from '../components/layout/PageContainer';
 import { 
   Sparkles, 
   FileText, 
@@ -21,7 +22,10 @@ import {
   X,
   AlertTriangle,
   Eye,
-  Calendar
+  Calendar,
+  Plus,
+  ChevronUp,
+  Upload
 } from 'lucide-react';
 
 export const ResumePage = () => {
@@ -30,11 +34,36 @@ export const ResumePage = () => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [analysisResult, setAnalysisResult] = useState(null);
+  
+  // Persist active report viewer state in sessionStorage across browser refreshes
+  const [analysisResult, setAnalysisResultState] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('career_pilot_active_report_v1');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const setAnalysisResult = (val) => {
+    try {
+      if (val) {
+        sessionStorage.setItem('career_pilot_active_report_v1', JSON.stringify(val));
+      } else {
+        sessionStorage.removeItem('career_pilot_active_report_v1');
+      }
+    } catch (e) {}
+    setAnalysisResultState(val);
+  };
+
   const [comparisonData, setComparisonData] = useState(null);
   const [error, setError] = useState(null);
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [iteratingItem, setIteratingItem] = useState(null);
+
+  // Workspace Mode UI State: Collapse upload widget when history exists
+  const hasHistory = (resumeHistory || []).length > 0;
+  const [isUploaderOpen, setIsUploaderOpen] = useState(false);
 
   // Smart Duplicate Detection Modal States
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
@@ -48,6 +77,14 @@ export const ResumePage = () => {
     "Evaluating ATS keyword compatibility...",
     "Generating actionable recommendations..."
   ];
+
+  // Reset temporary upload session state on page unmount/navigation
+  useEffect(() => {
+    return () => {
+      setUploadedFile(null);
+      setSharedResumeFile(null);
+    };
+  }, []);
 
   useEffect(() => {
     if (analyzing) {
@@ -70,20 +107,20 @@ export const ResumePage = () => {
 
     console.log("STEP 1: User selected PDF:", file, file instanceof File);
 
-    setUploadedFile(file);
-    setSharedResumeFile(file); // Store intact browser File instance in workspace memory
-    console.log("STEP 2 - Resume state updated:", file);
-
+    // Synchronously reset previous analysis views and errors before processing new upload
+    setAnalysisResult(null);
+    setComparisonData(null);
     setError(null);
     setIsQuotaExceeded(false);
 
-    try {
-      console.log("STEP 3 - Sending to backend:", file);
+    setUploadedFile(file);
+    setSharedResumeFile(file); // Store intact browser File instance in workspace memory
 
+    try {
       // Step A: Compute SHA-256 Content Hash
       const resumeHash = await computeResumeHash(file);
 
-      // Step B: Duplicate Check scoped strictly to CURRENT WORKSPACE
+      // Step B: Duplicate Check scoped strictly to CURRENT WORKSPACE resumeHistory
       if (!bypassDuplicateCheck) {
         const existingMatch = (resumeHistory || []).find(h => h.contentHash === resumeHash);
         if (existingMatch) {
@@ -93,8 +130,10 @@ export const ResumePage = () => {
         }
       }
 
+      // Enter full AI analysis loading state
       setAnalyzing(true);
-      setAnalysisResult(null);
+      setCurrentStep(0);
+
       let rawAnalysis;
 
       try {
@@ -137,7 +176,9 @@ export const ResumePage = () => {
         rawAnalysis = mockResumeAnalysis;
       }
 
-      // Single Source of Truth Workspace dispatch (overwrites existing matching hash in place if re-analyzing)
+      // Guarantee smooth loading step transition (minimum 1.2s)
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+
       const newId = `res_${Date.now()}`;
 
       addResumeAnalysis({
@@ -159,9 +200,14 @@ export const ResumePage = () => {
         }
       };
 
-      console.log("STEP 4 - Analysis complete, resume still exists:", file);
+      console.log("STEP 4 - Analysis complete, rendering result:", file);
       setAnalysisResult(analysisPayload);
       setIteratingItem(null);
+
+      // Finish temporary upload session and collapse uploader so workspace history is primary
+      setUploadedFile(null);
+      setSharedResumeFile(null);
+      setIsUploaderOpen(false);
     } catch (err) {
       console.error("Resume analysis execution error:", err);
       setError(err.message || "An unexpected error occurred during resume analysis.");
@@ -173,13 +219,15 @@ export const ResumePage = () => {
   const handleViewExistingReport = () => {
     if (existingDuplicateItem) {
       const data = existingDuplicateItem.analysisData || existingDuplicateItem.analysis || existingDuplicateItem;
-      const fileToAttach = (uploadedFile && (uploadedFile instanceof File || uploadedFile instanceof Blob)) ? uploadedFile : null;
       setAnalysisResult({
         ...data,
-        file: fileToAttach  
+        file: null
       });
       setDuplicateModalOpen(false);
       setExistingDuplicateItem(null);
+      // Destroy temporary upload session state when viewing duplicate report
+      setUploadedFile(null);
+      setSharedResumeFile(null);
     }
   };
 
@@ -203,6 +251,8 @@ export const ResumePage = () => {
   };
 
   const handleSampleUpload = () => {
+    setAnalysisResult(null);
+    setComparisonData(null);
     setAnalyzing(true);
     setError(null);
     setIsQuotaExceeded(false);
@@ -215,9 +265,6 @@ export const ResumePage = () => {
       const sampleContent = "Software Engineering Candidate with React, TypeScript, Node.js, and REST API experience.";
       const sampleBlob = new Blob([sampleContent], { type: 'application/pdf' });
       const sampleFile = new File([sampleBlob], sampleFilename, { type: 'application/pdf' });
-
-      setUploadedFile(sampleFile);
-      setSharedResumeFile(sampleFile);
 
       addResumeAnalysis({
         ...mockResumeAnalysis,
@@ -237,25 +284,22 @@ export const ResumePage = () => {
         }
       });
 
+      // Destroy temporary upload session state and collapse uploader
+      setUploadedFile(null);
+      setSharedResumeFile(null);
+      setIsUploaderOpen(false);
       setAnalyzing(false);
-    }, 2000);
+    }, 1800);
   };
 
   const handleSelectHistoryItem = (item) => {
     if (item && (item.analysisData || item.analysis || item.score)) {
       const data = item.analysisData || item.analysis || item;
 
-      const histFilename = item.filename || data.filename || 'Historical_Resume.pdf';
-      const histText = data.executiveSummary || data.resumeText || `Candidate resume: ${histFilename}`;
-      const histBlob = new Blob([histText], { type: 'application/pdf' });
-      const histFile = new File([histBlob], histFilename, { type: 'application/pdf' });
-
-      setUploadedFile(histFile);
-      setSharedResumeFile(histFile);
-
+      // Pure Report Viewer State update - NEVER touch or recreate Upload Session State!
       setAnalysisResult({
         ...data,
-        file: histFile
+        file: null
       });
       setComparisonData(null);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -264,53 +308,80 @@ export const ResumePage = () => {
 
   const handleDeleteHistoryItem = (id) => {
     deleteResumeAnalysis(id);
-    if (analysisResult && analysisResult.meta && analysisResult.meta.id === id) {
-      setAnalysisResult(null);
-      setComparisonData(null);
+    const remainingCount = (resumeHistory || []).filter(h => h.id !== id).length;
+
+    // Fully reset all upload & analysis UI states on item deletion
+    setUploadedFile(null);
+    setSharedResumeFile(null);
+    setAnalysisResult(null);
+    setComparisonData(null);
+    setError(null);
+    setIteratingItem(null);
+    setAnalyzing(false);
+
+    if (remainingCount === 0) {
+      setIsUploaderOpen(true); // Auto-switch to first-time upload layout
     }
+  };
+
+  const handleClearAllHistory = () => {
+    clearResumeHistory();
+    // Fully reset all upload & analysis UI states on clear history
+    setUploadedFile(null);
+    setSharedResumeFile(null);
+    setAnalysisResult(null);
+    setComparisonData(null);
+    setError(null);
+    setIteratingItem(null);
+    setAnalyzing(false);
+    setIsUploaderOpen(true); // Auto-switch to first-time upload layout
   };
 
   const handleIterateHistoryItem = (item) => {
     setIteratingItem(item);
     setAnalysisResult(null);
     setComparisonData(null);
+    setIsUploaderOpen(true); // Expand upload section for iterating/updating
     if (uploaderRef.current) {
       uploaderRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn max-w-7xl mx-auto">
+    <PageContainer>
       
       {/* Non-Blocking Guided Journey Banner */}
       <GuidedJourneyBanner currentFeatureId="resume" />
 
       {/* 1. Page Header */}
       {!analysisResult && (
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#30363D]">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-xs font-semibold text-green-400 mb-2">
-              <FileText className="w-3.5 h-3.5" />
-              <span>Single Source of Truth Resume Workspace</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              AI Resume Analyzer
-            </h1>
-            <p className="text-sm text-gray-400 mt-1">
-              Upload your resume for deep ATS scoring, keyword matching, and targeted improvements.
-            </p>
-          </div>
+        <PageHeader
+          title="Resumes"
+          subtitle="Manage, analyze and improve your resumes."
+          backTo="/app/dashboard"
+          backLabel="Back to Dashboard"
+          actions={
+            !analyzing && (
+              <>
+                <button
+                  onClick={() => setIsUploaderOpen((prev) => !prev)}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-blue-500/10 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isUploaderOpen ? 'Collapse Uploader' : 'Upload New Resume'}</span>
+                </button>
 
-          {!analyzing && (
-            <button
-              onClick={handleSampleUpload}
-              className="px-4 py-2.5 bg-[#161B22] hover:bg-[#21262d] text-gray-300 hover:text-white border border-[#30363D] text-xs font-semibold rounded-xl flex items-center gap-2 transition-all cursor-pointer self-start md:self-auto"
-            >
-              <Sparkles className="w-4 h-4 text-green-400" />
-              <span>Load Sample Resume</span>
-            </button>
-          )}
-        </div>
+                <button
+                  onClick={handleSampleUpload}
+                  className="px-4 py-2.5 bg-[#161B22] hover:bg-[#21262d] text-gray-300 hover:text-white border border-[#30363D] text-xs font-semibold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                >
+                  <Sparkles className="w-4 h-4 text-blue-400" />
+                  <span>Try Sample Resume</span>
+                </button>
+              </>
+            )
+          }
+        />
       )}
 
       {/* 2. Smart Duplicate Confirmation Modal Dialog */}
@@ -436,19 +507,42 @@ export const ResumePage = () => {
         </ErrorBoundary>
       )}
 
-      {/* Main Upload Box */}
+      {/* Main Upload & Workspace Area */}
       {!analysisResult && !analyzing && (
         <div ref={uploaderRef} className="space-y-8">
-          <ResumeUploader
-            uploadedFile={uploadedFile}
-            setUploadedFile={setUploadedFile}
-            onUploadComplete={(file) => handleRunAnalysis(file, false)}
-            onAnalyze={(file) => handleRunAnalysis(file || uploadedFile, false)}
-            analyzing={analyzing}
-            iteratingItem={iteratingItem}
-            onCancelIterate={() => setIteratingItem(null)}
-          />
+          
+          {/* Expandable Upload Section */}
+          {(!hasHistory || isUploaderOpen) && (
+            <div className="animate-fadeIn transition-all duration-300">
+              {hasHistory && (
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload New Resume Version</span>
+                  </h3>
+                  <button
+                    onClick={() => setIsUploaderOpen(false)}
+                    className="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <span>Collapse</span>
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
 
+              <ResumeUploader
+                uploadedFile={uploadedFile}
+                setUploadedFile={setUploadedFile}
+                onUploadComplete={(file) => handleRunAnalysis(file, false)}
+                onAnalyze={(file) => handleRunAnalysis(file || uploadedFile, false)}
+                analyzing={analyzing}
+                iteratingItem={iteratingItem}
+                onCancelIterate={() => setIteratingItem(null)}
+              />
+            </div>
+          )}
+
+          {/* Persistent Resume History Workspace */}
           <ResumeHistoryList
             history={resumeHistory}
             onViewReport={handleSelectHistoryItem}
@@ -457,12 +551,14 @@ export const ResumePage = () => {
             onIterate={handleIterateHistoryItem}
             onDeleteItem={handleDeleteHistoryItem}
             onDelete={handleDeleteHistoryItem}
-            onClearAll={clearResumeHistory}
-            onClear={clearResumeHistory}
+            onClearAll={handleClearAllHistory}
+            onClear={handleClearAllHistory}
+            onToggleUploader={() => setIsUploaderOpen((prev) => !prev)}
+            isUploaderOpen={isUploaderOpen}
           />
         </div>
       )}
 
-    </div>
+    </PageContainer>
   );
 };

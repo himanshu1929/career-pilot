@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '../../components/layout/PageContainer';
 import { 
   CheckCircle2, 
   Circle, 
@@ -712,6 +713,22 @@ export const RoadmapTimeline = ({ roadmapData, targetRole, onReset }) => {
         /* STANDARD IN-PROGRESS ROADMAP VIEW */
         /* ========================================================================= */
         <div className="space-y-8">
+          
+          <PageHeader
+            title="Learning Roadmap Report"
+            subtitle={`Target Role: ${currentGoalStr}`}
+            onBack={onReset}
+            backLabel="Back to Learning Roadmap"
+            actions={
+              <button
+                onClick={onReset}
+                className="px-3.5 py-2.5 bg-[#161B22] hover:bg-[#21262d] text-gray-300 hover:text-white border border-[#30363D] text-xs font-semibold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-gray-400" />
+                <span>Create Another Plan</span>
+              </button>
+            }
+          />
           
           {/* CAREER READINESS CARD */}
           <div className="bg-[#161B22] rounded-lg p-6 border-2 border-blue-500/30 space-y-5 shadow-md">

@@ -1,8 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, ArrowRight, FileText, Target, Map, Mic, CheckCircle2, TrendingUp, Zap } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const Hero = ({ onLaunchApp }) => {
+  const { user } = useAuth();
+
   const handleScrollToHowItWorks = (e) => {
     e.preventDefault();
     const elem = document.getElementById('how-it-works');
@@ -61,7 +64,7 @@ export const Hero = ({ onLaunchApp }) => {
             onClick={onLaunchApp}
             className="w-full sm:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
-            <span>Launch CareerPilot</span>
+            <span>{user ? 'Continue your Journey' : 'Launch CareerPilot'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
 
@@ -91,7 +94,7 @@ export const Hero = ({ onLaunchApp }) => {
               <FileText className="w-5 h-5" />
             </div>
             <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-1.5">
-              <span>Resume Analyzer</span>
+              <span>Resumes</span>
               <ArrowRight className="w-3.5 h-3.5 text-gray-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
             </h3>
             <p className="mt-1.5 text-xs text-gray-400 leading-relaxed">

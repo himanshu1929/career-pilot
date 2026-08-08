@@ -1,7 +1,10 @@
 import React from 'react';
 import { ArrowRight, Compass } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const CTA = ({ onLaunchApp }) => {
+  const { user } = useAuth();
+
   return (
     <section className="py-20 relative z-10 bg-[#0D1117]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -25,7 +28,7 @@ export const CTA = ({ onLaunchApp }) => {
                 onClick={onLaunchApp}
                 className="px-8 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
-                <span>Launch CareerPilot App</span>
+                <span>{user ? 'Continue your Journey' : 'Launch CareerPilot App'}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

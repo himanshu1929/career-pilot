@@ -5,6 +5,8 @@ import { InterviewSimulator } from '../features/interview/InterviewSimulator';
 import { InterviewSummary } from '../features/interview/InterviewSummary';
 import { GuidedJourneyBanner } from '../components/layout/GuidedJourneyBanner';
 
+import { PageContainer } from '../components/layout/PageContainer';
+
 export const InterviewPage = () => {
   const { addInterview } = useWorkspace();
 
@@ -56,7 +58,7 @@ export const InterviewPage = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn max-w-7xl mx-auto">
+    <PageContainer>
       
       {/* Non-Blocking Guided Journey Banner */}
       <GuidedJourneyBanner currentFeatureId="interview" />
@@ -83,6 +85,6 @@ export const InterviewPage = () => {
           onRestart={handleRestart}
         />
       )}
-    </div>
+    </PageContainer>
   );
 };

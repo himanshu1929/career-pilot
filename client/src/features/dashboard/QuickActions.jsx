@@ -25,18 +25,18 @@ export const QuickActions = ({ onNavigate }) => {
           <button
             key={action.id}
             onClick={() => onNavigate(action.id)}
-            className={`glass-card glass-card-hover text-left rounded-2xl p-5 border ${action.border} relative overflow-hidden group transition-all duration-300`}
+            className="bg-[#161B22] hover:bg-[#1c2128] text-left rounded-2xl p-5 border border-[#30363D] hover:border-blue-500/50 relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer"
           >
-            <div className={`w-12 h-12 rounded-xl bg-slate-900/80 border border-white/10 flex items-center justify-center mb-4 ${action.accent}`}>
+            <div className={`w-12 h-12 rounded-xl bg-[#0D1117] border border-[#30363D] flex items-center justify-center mb-4 ${action.accent} group-hover:scale-105 transition-transform`}>
               {getIcon(action.icon)}
             </div>
 
-            <h3 className="text-base font-bold text-white mb-1 group-hover:text-indigo-300 transition-colors flex items-center justify-between">
+            <h3 className="text-base font-bold text-white mb-1 group-hover:text-blue-400 transition-colors flex items-center justify-between">
               <span>{action.title}</span>
-              <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-300 group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
             </h3>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-gray-400 leading-relaxed">
               {action.desc}
             </p>
           </button>

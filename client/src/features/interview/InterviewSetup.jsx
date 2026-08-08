@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { PageHeader } from '../../components/layout/PageContainer';
 import { 
   Mic, 
   Sparkles, 
@@ -46,7 +47,6 @@ const PERSONA_CONFIGS = [
     id: 'coach',
     avatarImg: elenaAvatar,
     name: 'Elena',
-    title: 'Technical Coach',
     highlights: ['• Explains mistakes', '• Gives detailed feedback']
   }
 ];
@@ -303,21 +303,13 @@ export const InterviewSetup = ({ onStart, onStartInterview, onViewSavedReport, l
   return (
     <div className="w-full space-y-10 animate-fadeIn">
       
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#30363D]">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-400 mb-2">
-            <Mic className="w-3.5 h-3.5" />
-            <span>AI Mock Interview Simulator</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            AI Mock Interview Workspace
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Simulate realistic domain-specific technical & behavioral interviews with instant AI evaluation.
-          </p>
-        </div>
-      </div>
+      {/* Standardized Page Header */}
+      <PageHeader
+        title="Mock Interview"
+        subtitle="Practice AI-powered technical interviews."
+        backTo="/app/dashboard"
+        backLabel="Back to Dashboard"
+      />
 
       {/* 1. Resume Context Banner */}
       {resumeHistory.length > 0 ? (
@@ -608,7 +600,19 @@ export const InterviewSetup = ({ onStart, onStartInterview, onViewSavedReport, l
       </form>
 
       {/* Recent Completed Interviews History */}
-      {interviews.length > 0 && (
+      {interviews.length === 0 ? (
+        <div className="bg-[#161B22] border border-[#30363D] rounded-2xl p-6 sm:p-8 text-center space-y-3.5 shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-400">
+            <Mic className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-white tracking-tight">No interviews yet</h3>
+            <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto">
+              Practice with AI and improve your confidence.
+            </p>
+          </div>
+        </div>
+      ) : (
         <div className="bg-[#161B22] border border-[#30363D] rounded-2xl p-6 space-y-4 shadow-xl">
           <div className="flex items-center justify-between pb-3 border-b border-[#30363D]">
             <div className="flex items-center gap-2">

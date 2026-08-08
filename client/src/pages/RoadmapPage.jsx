@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { RoadmapForm } from '../features/roadmap/RoadmapForm';
 import { RoadmapTimeline } from '../features/roadmap/RoadmapTimeline';
@@ -7,146 +7,151 @@ import { RoadmapLoadingState } from '../features/roadmap/RoadmapLoadingState';
 import { GuidedJourneyBanner } from '../components/layout/GuidedJourneyBanner';
 import { QuotaLimitBanner } from '../components/common/QuotaLimitBanner';
 import { generateDynamicRoadmap } from '../utils/roadmapGenerator';
+import { PageContainer } from '../components/layout/PageContainer';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 const ROADMAP_MODE_STORAGE_KEY = 'career_pilot_roadmap_mode';
 
 export const RoadmapPage = () => {
   const location = useLocation();
-  const { roadmaps, saveRoadmap, clearRoadmaps, roadmapSeed, clearRoadmapSeed } = useWorkspace();
+  const navigate = useNavigate();
+  const { 
+    roadmaps, 
+    saveRoadmap, 
+    roadmapSeed, 
+    clearRoadmapSeed,
+    activeResumeAnalysis 
+  } = useWorkspace();
 
-  // Check if navigated from Job Matcher with active seed
   const isFromJobMatcher = Boolean(location.state?.fromJobMatcher && roadmapSeed && roadmapSeed.source === 'jobMatcher');
 
   const [generating, setGenerating] = useState(false);
-  const [targetRole, setTargetRole] = useState(roadmapSeed?.targetRole || '');
+  const [targetRole, setTargetRole] = useState(roadmapSeed?.targetRole || activeResumeAnalysis?.candidateLevel || '');
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [lastFormData, setLastFormData] = useState(null);
 
-  // Initialize mode from sessionStorage to guarantee browser refresh stays on form if candidate clicked Create Another Plan
+  // Mode tracking state
   const [isCreatingNew, setIsCreatingNew] = useState(() => {
     try {
-      if (isFromJobMatcher) return true; // Force form view when arriving from Job Matcher
+      if (isFromJobMatcher) return true;
       return sessionStorage.getItem(ROADMAP_MODE_STORAGE_KEY) === 'create' || roadmaps.length === 0;
     } catch (e) {
       return false;
     }
   });
 
-  // Active roadmap is current workspace roadmap unless candidate requested a new plan creation or arrived from Job Matcher
-  const activeRoadmap = (isCreatingNew || isFromJobMatcher) ? null : (roadmaps[0] || null);
+  // Keep targetRole in sync when roadmapSeed changes
+  useEffect(() => {
+    if (roadmapSeed?.targetRole) {
+      setTargetRole(roadmapSeed.targetRole);
+    }
+  }, [roadmapSeed]);
+
+  // Active roadmap selection
+  const activeRoadmap = (isCreatingNew || (roadmapSeed && isFromJobMatcher)) ? null : (roadmaps[0] || null);
 
   const handleGenerateRoadmap = async (formData) => {
-    const role = formData?.targetRole || targetRole || '';
-    const skills = formData?.currentSkills || '';
-    const missing = formData?.missingSkills || (isFromJobMatcher ? roadmapSeed?.missingSkills : []) || [];
-    const level = formData?.experienceLevel || '';
+    const role = (formData?.targetRole || targetRole || roadmapSeed?.targetRole || activeResumeAnalysis?.candidateLevel || '').trim();
+    const skills = (formData?.currentSkills || (Array.isArray(roadmapSeed?.currentSkills) ? roadmapSeed.currentSkills.join(', ') : '') || '').trim();
+    const missing = formData?.missingSkills || roadmapSeed?.missingSkills || activeResumeAnalysis?.missingSkills || [];
+    const expLevel = formData?.experienceLevel || 'Intermediate';
 
-    setLastFormData(formData);
+    // 1. Data Validation
+    if (!role || role.length < 2) {
+      setErrorMessage("Roadmap generation requires a valid Target Career Role. Please specify your target role.");
+      return;
+    }
+
+    const payloadInput = {
+      targetRole: role,
+      currentSkills: skills || 'Programming Fundamentals, Git',
+      missingSkills: missing,
+      experienceLevel: expLevel,
+      timeline: formData?.timeline || '3 months'
+    };
+
+    console.log("[ROADMAP] Starting generation", payloadInput);
     setTargetRole(role);
+    setLastFormData(formData);
     setGenerating(true);
     setIsQuotaExceeded(false);
-    setIsCreatingNew(false);
+    setErrorMessage(null);
+
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
     try {
-      sessionStorage.removeItem(ROADMAP_MODE_STORAGE_KEY);
-    } catch (e) {}
-
-    const timestamp = Date.now();
-    const newRoadmapId = `rm_${role.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_${timestamp}`;
-
-    try {
-      const response = await fetch('/api/roadmap/generate', {
+      console.log("[ROADMAP] AI request started");
+      const response = await fetch(`${API_URL}/api/roadmap/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          targetRole: role,
-          currentSkills: skills,
-          missingSkills: missing,
-          experienceLevel: level
-        })
+        body: JSON.stringify(payloadInput)
       });
 
-      let resData = {};
-      try {
-        resData = await response.json();
-      } catch (e) {}
-
-      // Handle AI Quota Exhaustion or Backend Errors
-      if (
-        !response.ok ||
-        response.status === 429 || 
-        resData.errorType === 'QUOTA_EXCEEDED' || 
-        resData.errorType === 'RESOURCE_EXHAUSTED' ||
-        (resData.message && (resData.message.includes('quota') || resData.message.includes('RESOURCE_EXHAUSTED')))
-      ) {
+      if (response.status === 429) {
+        console.warn("[ROADMAP] AI service rate limited (429)");
         setIsQuotaExceeded(true);
         setGenerating(false);
-        setIsCreatingNew(true);
-        try {
-          sessionStorage.setItem(ROADMAP_MODE_STORAGE_KEY, 'create');
-        } catch (e) {}
         return;
       }
 
-      if (resData && resData.data) {
-        const fullData = resData.data.roadmap ? resData.data : { roadmap: resData.data };
-        if (Array.isArray(fullData.roadmap) && fullData.roadmap.length > 0) {
-          const finalData = {
-            ...fullData,
-            roadmapId: fullData.roadmapId || newRoadmapId,
-            createdAt: timestamp
-          };
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-          saveRoadmap(finalData);
-          clearRoadmapSeed();
-          setGenerating(false);
-          setIsCreatingNew(false);
-          try {
-            sessionStorage.removeItem(ROADMAP_MODE_STORAGE_KEY);
-          } catch (e) {}
-          return;
-        }
+      const json = await response.json();
+      console.log("[ROADMAP] AI response received", json);
+
+      if (json && json.success && json.data) {
+        console.log("[ROADMAP] Saving roadmap to Firestore");
+        saveRoadmap(json.data);
+        console.log("[ROADMAP] Firestore save complete");
+        
+        clearRoadmapSeed();
+        setIsCreatingNew(false);
+        try { sessionStorage.setItem(ROADMAP_MODE_STORAGE_KEY, 'view'); } catch (e) {}
+      } else {
+        throw new Error('Invalid roadmap payload returned by server');
       }
 
     } catch (err) {
-      console.warn("Backend API endpoint offline or unreachable. Generating dynamic fallback roadmap.", err);
+      console.error("[ROADMAP] Generation failed", err);
+      console.warn("[ROADMAP] Engaging dynamic client-side fallback generator");
 
-      // Execute client-side fallback ONLY if Express server is completely offline / unreachable
-      const dynamicResult = generateDynamicRoadmap(role, skills, missing);
-      const finalDynamicData = {
-        ...dynamicResult,
-        roadmapId: dynamicResult.roadmapId || newRoadmapId,
-        createdAt: timestamp
-      };
-
-      saveRoadmap(finalDynamicData);
-      clearRoadmapSeed();
-      setGenerating(false);
-      setIsCreatingNew(false);
       try {
-        sessionStorage.removeItem(ROADMAP_MODE_STORAGE_KEY);
-      } catch (e) {}
+        const fallbackPayload = generateDynamicRoadmap(role, skills, expLevel, '3 months');
+        console.log("[ROADMAP] Saving fallback roadmap to Firestore");
+        saveRoadmap(fallbackPayload);
+        console.log("[ROADMAP] Firestore save complete");
+
+        clearRoadmapSeed();
+        setIsCreatingNew(false);
+        try { sessionStorage.setItem(ROADMAP_MODE_STORAGE_KEY, 'view'); } catch (e) {}
+      } catch (fallbackErr) {
+        console.error("[ROADMAP] Fallback generation also failed", fallbackErr);
+        setErrorMessage("Couldn't generate your roadmap. Something went wrong while creating your personalized roadmap.");
+      }
+    } finally {
+      console.log("[ROADMAP] Generation state cleared (generating: false)");
+      setGenerating(false);
     }
   };
 
   const handleReset = () => {
-    try {
-      sessionStorage.setItem(ROADMAP_MODE_STORAGE_KEY, 'create');
-    } catch (e) {}
-
-    clearRoadmapSeed();
-    setGenerating(false);
-    setIsQuotaExceeded(false);
+    try { sessionStorage.setItem(ROADMAP_MODE_STORAGE_KEY, 'create'); } catch (e) {}
     setIsCreatingNew(true);
+    setIsQuotaExceeded(false);
+    setErrorMessage(null);
+    clearRoadmapSeed();
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn max-w-7xl mx-auto">
+    <PageContainer>
       
-      {/* Non-Blocking Guided Journey Banner */}
+      {/* Guided Journey Banner */}
       <GuidedJourneyBanner currentFeatureId="roadmap" />
 
-      {/* Shared Quota Alert Banner with Retry & Back options */}
+      {/* Quota Exceeded Alert */}
       {isQuotaExceeded && (
         <QuotaLimitBanner
           message="The AI service is temporarily unavailable. Please try again in a few minutes."
@@ -155,11 +160,30 @@ export const RoadmapPage = () => {
         />
       )}
 
-      {/* Full-Screen Dedicated AI Reasoning Loading Screen */}
+      {/* Error Alert Card */}
+      {errorMessage && (
+        <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-6 text-center space-y-4 shadow-xl animate-fadeIn max-w-xl mx-auto">
+          <div className="flex items-center justify-center gap-2 text-rose-400 font-bold">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span className="text-base">Couldn't generate your roadmap</span>
+          </div>
+          <p className="text-xs text-gray-300">
+            {errorMessage}
+          </p>
+          <button
+            onClick={() => handleGenerateRoadmap(lastFormData)}
+            className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center gap-2"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Try Again</span>
+          </button>
+        </div>
+      )}
+
+      {/* State Machine: Generating Loading vs Form vs Roadmap Timeline */}
       {generating ? (
         <RoadmapLoadingState targetRole={targetRole} />
       ) : (
-        /* Main Roadmap Form vs Generated Roadmap Timeline */
         !activeRoadmap ? (
           <RoadmapForm
             onGenerateRoadmap={handleGenerateRoadmap}
@@ -178,6 +202,6 @@ export const RoadmapPage = () => {
         )
       )}
 
-    </div>
+    </PageContainer>
   );
 };

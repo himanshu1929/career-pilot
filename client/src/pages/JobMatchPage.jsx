@@ -4,20 +4,22 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import { JobMatcherWorkspace } from '../features/job-match/JobMatcherWorkspace';
 import { JobMatchResult } from '../features/job-match/JobMatchResult';
 import { JobMatchHistory } from '../features/job-match/JobMatchHistory';
+import { JobMatcherLoadingState } from '../features/job-match/JobMatcherLoadingState';
 import { GuidedJourneyBanner } from '../components/layout/GuidedJourneyBanner';
 import { QuotaLimitBanner } from '../components/common/QuotaLimitBanner';
+import { PageContainer } from '../components/layout/PageContainer';
 import { AlertCircle } from 'lucide-react';
 
 export const JobMatchPage = () => {
   const location = useLocation();
-  const { addJobMatch, activeResumeFile, profile } = useWorkspace();
+  const { addJobMatch, activeResumeFile, activeResumeAnalysis } = useWorkspace();
 
   // Extract company name from job description if available
   const extractCompanyName = (jdText) => {
     if (!jdText) return 'Target Company';
     const lines = jdText.split('\n').map(l => l.trim()).filter(Boolean);
     for (const line of lines.slice(0, 8)) {
-      const match = line.match(/(?:at|company|client|organization|hiring for|about)\s+([A-[#A-Za-z0-9\s&]{2,30})/i);
+      const match = line.match(/(?:at|company|client|organization|hiring for|about)\s+([A-Za-z0-9\s&]{2,30})/i);
       if (match && match[1]) {
         return match[1].trim();
       }
@@ -40,19 +42,78 @@ export const JobMatchPage = () => {
     if (location.state?.fromResumeAnalyzer) {
       window.history.replaceState({}, document.title);
     }
-  }, []);
+  }, [location]);
 
   const [analyzing, setAnalyzing] = useState(false);
-  const [matchResult, setMatchResult] = useState(null);
-  const [jobTitle, setJobTitle] = useState('');
-  const [filename, setFilename] = useState('');
+  
+  // Persist active Job Match Report state in sessionStorage across browser refreshes
+  const [matchResult, setMatchResultState] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('career_pilot_active_job_match_v1');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const [jobTitle, setJobTitleState] = useState(() => {
+    try {
+      return sessionStorage.getItem('career_pilot_active_job_match_title_v1') || '';
+    } catch (e) { return ''; }
+  });
+
+  const [filename, setFilenameState] = useState(() => {
+    try {
+      return sessionStorage.getItem('career_pilot_active_job_match_filename_v1') || '';
+    } catch (e) { return ''; }
+  });
+
+  const setMatchResult = (val) => {
+    try {
+      if (val) {
+        sessionStorage.setItem('career_pilot_active_job_match_v1', JSON.stringify(val));
+      } else {
+        sessionStorage.removeItem('career_pilot_active_job_match_v1');
+        sessionStorage.removeItem('career_pilot_active_job_match_title_v1');
+        sessionStorage.removeItem('career_pilot_active_job_match_filename_v1');
+      }
+    } catch (e) {}
+    setMatchResultState(val);
+  };
+
+  const setJobTitle = (val) => {
+    try {
+      if (val) sessionStorage.setItem('career_pilot_active_job_match_title_v1', val);
+    } catch (e) {}
+    setJobTitleState(val);
+  };
+
+  const setFilename = (val) => {
+    try {
+      if (val) sessionStorage.setItem('career_pilot_active_job_match_filename_v1', val);
+    } catch (e) {}
+    setFilenameState(val);
+  };
+
   const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
   const handleAnalyzeMatch = async ({ resumeFile, jobTitle: title, companyName: userCompany, jobDescription }) => {
     if (analyzing) return;
 
-    if (!(resumeFile instanceof File)) {
+    let fileToUse = resumeFile;
+    if (!(fileToUse instanceof File)) {
+      if (activeResumeFile && (activeResumeFile instanceof File)) {
+        fileToUse = activeResumeFile;
+      } else if (activeResumeAnalysis) {
+        const fn = activeResumeAnalysis.filename || activeResumeAnalysis.originalName || 'Resume_Document.pdf';
+        const fileText = activeResumeAnalysis.rawText || activeResumeAnalysis.executiveSummary || 'Parsed resume candidate details.';
+        const blob = new Blob([fileText], { type: 'application/pdf' });
+        fileToUse = new File([blob], fn, { type: 'application/pdf' });
+      }
+    }
+
+    if (!(fileToUse instanceof File)) {
       setErrorMessage("Resume File object is missing or invalid. Please select or upload a PDF resume file.");
       setAnalyzing(false);
       return;
@@ -67,7 +128,7 @@ export const JobMatchPage = () => {
     const activeTitle = title.trim();
     const activeCompany = (userCompany && userCompany.trim()) || extractCompanyName(jobDescription);
     setJobTitle(activeTitle);
-    setFilename(resumeFile.name);
+    setFilename(fileToUse.name);
     setErrorMessage(null);
     setIsQuotaExceeded(false);
     setAnalyzing(true);
@@ -76,7 +137,7 @@ export const JobMatchPage = () => {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       
       const formData = new FormData();
-      formData.append('resume', resumeFile);
+      formData.append('resume', fileToUse);
       formData.append('jobDescription', jobDescription || '');
       if (location.state?.preloadedResumeText) {
         formData.append('resumeText', location.state.preloadedResumeText);
@@ -184,7 +245,7 @@ export const JobMatchPage = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn max-w-7xl mx-auto">
+    <PageContainer>
       
       {/* Non-Blocking Guided Journey Banner */}
       <GuidedJourneyBanner currentFeatureId="jobMatch" />
@@ -208,14 +269,10 @@ export const JobMatchPage = () => {
         </div>
       )}
 
-      {/* Input Workspace vs Match Results */}
-      {!matchResult ? (
-        <JobMatcherWorkspace
-          onAnalyzeMatch={handleAnalyzeMatch}
-          analyzing={analyzing}
-          initialResumeFile={preloadedResumeFile}
-        />
-      ) : (
+      {/* Render Mutually Exclusive Primary States (State 1 vs State 2 vs State 3) */}
+      {analyzing ? (
+        <JobMatcherLoadingState />
+      ) : matchResult ? (
         <JobMatchResult
           resultData={matchResult}
           matchData={matchResult}
@@ -227,11 +284,17 @@ export const JobMatchPage = () => {
             setErrorMessage(null);
           }}
         />
+      ) : (
+        <>
+          <JobMatcherWorkspace
+            onAnalyzeMatch={handleAnalyzeMatch}
+            analyzing={false}
+            initialResumeFile={preloadedResumeFile}
+          />
+          <JobMatchHistory onSelectReport={handleSelectReport} />
+        </>
       )}
 
-      {/* Job Match History Section */}
-      <JobMatchHistory onSelectReport={handleSelectReport} />
-
-    </div>
+    </PageContainer>
   );
 };

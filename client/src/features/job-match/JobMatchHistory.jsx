@@ -87,16 +87,22 @@ export const JobMatchHistory = ({ onSelectReport }) => {
 
   if (!jobMatches || jobMatches.length === 0) {
     return (
-      <div className="bg-[#161B22] border border-[#30363D] rounded-2xl p-8 text-center space-y-4 shadow-lg mt-8">
-        <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center mx-auto text-blue-400">
-          <Target className="w-6 h-6" />
+      <div className="bg-[#161B22] border border-[#30363D] rounded-2xl p-6 sm:p-8 text-center space-y-3.5 shadow-sm mt-8">
+        <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center mx-auto text-blue-400">
+          <Target className="w-5 h-5" />
         </div>
-        <div className="space-y-1 max-w-md mx-auto">
-          <h3 className="text-base font-extrabold text-white tracking-tight">No Job Match Reports Saved Yet</h3>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            Run your first Job Description Match analysis above to evaluate skill gaps, discover ATS keywords, and save your report history.
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-white tracking-tight">No job matches yet</h3>
+          <p className="text-xs text-gray-400 leading-relaxed max-w-xs mx-auto">
+            Compare your resume against a job description.
           </p>
         </div>
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-blue-500/20"
+        >
+          <span>Start Matching</span>
+        </button>
       </div>
     );
   }

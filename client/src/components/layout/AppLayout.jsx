@@ -7,10 +7,11 @@ import { Compass, Menu, X } from 'lucide-react';
 const PATH_TITLES = {
   '/': 'Landing | CareerPilot',
   '/app/dashboard': 'Dashboard | CareerPilot',
-  '/app/resume-analyzer': 'Resume Analyzer | CareerPilot',
+  '/app/profile': 'Profile | CareerPilot',
+  '/app/resume-analyzer': 'Resumes | CareerPilot',
   '/app/job-matcher': 'Job Matcher | CareerPilot',
-  '/app/roadmap': 'Skill Gap & Roadmap | CareerPilot',
-  '/app/mock-interview': 'AI Mock Interview | CareerPilot'
+  '/app/roadmap': 'Learning Roadmap | CareerPilot',
+  '/app/mock-interview': 'Mock Interview | CareerPilot'
 };
 
 export const AppLayout = ({ onGoHome }) => {
@@ -58,7 +59,7 @@ export const AppLayout = ({ onGoHome }) => {
       <Sidebar onGoHome={onGoHome} />
 
       {/* Main App Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#0D1117]">
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen border-l border-[#30363D]">
         
         {/* Mobile Header Bar */}
         <header className="md:hidden bg-[#0D1117]/95 px-4 py-3 border-b border-[#30363D] flex items-center justify-between sticky top-0 z-30">
@@ -84,13 +85,13 @@ export const AppLayout = ({ onGoHome }) => {
               onClick={() => { navigate('/app/dashboard'); setMobileSidebarOpen(false); }}
               className={`w-full text-left py-2.5 px-3 rounded text-sm ${location.pathname === '/app/dashboard' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300'}`}
             >
-              Dashboard Overview
+              Dashboard
             </button>
             <button
               onClick={() => { navigate('/app/resume-analyzer'); setMobileSidebarOpen(false); }}
               className={`w-full text-left py-2.5 px-3 rounded text-sm ${location.pathname === '/app/resume-analyzer' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300'}`}
             >
-              Resume Analyzer
+              Resumes
             </button>
             <button
               onClick={() => { navigate('/app/job-matcher'); setMobileSidebarOpen(false); }}
@@ -102,24 +103,24 @@ export const AppLayout = ({ onGoHome }) => {
               onClick={() => { navigate('/app/roadmap'); setMobileSidebarOpen(false); }}
               className={`w-full text-left py-2.5 px-3 rounded text-sm ${location.pathname === '/app/roadmap' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300'}`}
             >
-              Skill Gap & Roadmap
+              Learning Roadmap
             </button>
             <button
               onClick={() => { navigate('/app/mock-interview'); setMobileSidebarOpen(false); }}
               className={`w-full text-left py-2.5 px-3 rounded text-sm ${location.pathname === '/app/mock-interview' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300'}`}
             >
-              AI Mock Interview
+              Mock Interview
             </button>
           </div>
         )}
 
-        {/* Dynamic Route Main Content Container — Near-Instantaneous SaaS Entrance Animation */}
+        {/* Dynamic Route Main Content Container — Unified PageContainer Layout */}
         <motion.main
           key={location.pathname}
-          initial={prefersReducedMotion ? { opacity: 1, y: 0 } : { opacity: 0.98, y: 8 }}
+          initial={prefersReducedMotion ? { opacity: 1, y: 0 } : { opacity: 0.98, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.2, ease: "easeOut" }}
-          className="p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto bg-[#0D1117]"
+          transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.15, ease: "easeOut" }}
+          className="flex-1 w-full bg-[#0D1117]"
         >
           <Outlet />
         </motion.main>

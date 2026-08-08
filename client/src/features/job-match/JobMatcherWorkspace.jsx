@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Target, FileText, Sparkles, ArrowRight, Briefcase, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { ResumeUploader } from '../resume/ResumeUploader';
 import { useWorkspace } from '../../context/WorkspaceContext';
+import { PageHeader } from '../../components/layout/PageContainer';
 
 export const JobMatcherWorkspace = ({ onAnalyzeMatch, analyzing, initialResumeFile }) => {
-  const { profile } = useWorkspace();
-  const [resumeFile, setResumeFile] = useState(initialResumeFile || null);
+  const { profile, activeResumeAnalysis, activeResumeFile } = useWorkspace();
+  const [resumeFile, setResumeFile] = useState(initialResumeFile || activeResumeFile || null);
+  const [isChangingResume, setIsChangingResume] = useState(false);
 
   const isPlatformObjective = (str) => {
     if (!str) return true;
@@ -22,8 +24,38 @@ export const JobMatcherWorkspace = ({ onAnalyzeMatch, analyzing, initialResumeFi
   useEffect(() => {
     if (initialResumeFile && (initialResumeFile instanceof File || initialResumeFile instanceof Blob)) {
       setResumeFile(initialResumeFile);
+    } else if (activeResumeFile && (activeResumeFile instanceof File || activeResumeFile instanceof Blob)) {
+      setResumeFile(activeResumeFile);
     }
-  }, [initialResumeFile]);
+  }, [initialResumeFile, activeResumeFile]);
+
+  // Helper to retrieve effective value considering DOM input for browser autofill synchronization
+  const getEffectiveJobTitle = () => {
+    if (jobTitle && jobTitle.trim()) return jobTitle.trim();
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById('target-job-title');
+      if (el && el.value && el.value.trim()) return el.value.trim();
+    }
+    return '';
+  };
+
+  const getEffectiveCompanyName = () => {
+    if (companyName && companyName.trim()) return companyName.trim();
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById('target-company-name');
+      if (el && el.value && el.value.trim()) return el.value.trim();
+    }
+    return '';
+  };
+
+  const getEffectiveJobDescription = () => {
+    if (jobDescription && jobDescription.trim()) return jobDescription.trim();
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById('target-job-description') || document.getElementById('job-description-input');
+      if (el && el.value && el.value.trim()) return el.value.trim();
+    }
+    return '';
+  };
 
   // User interaction tracking flags
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -31,10 +63,29 @@ export const JobMatcherWorkspace = ({ onAnalyzeMatch, analyzing, initialResumeFi
   const [jobTitleTouched, setJobTitleTouched] = useState(false);
   const [jobDescTouched, setJobDescTouched] = useState(false);
 
-  // Field validation logic (Job Title is mandatory)
-  const isResumeValid = Boolean(resumeFile);
-  const isJobTitleValid = Boolean(jobTitle && jobTitle.trim().length >= 2);
-  const isJobDescriptionValid = Boolean(jobDescription && jobDescription.trim().length >= 10);
+  // Synchronize state from DOM elements on interval / blur to catch browser autofill
+  const handleJobTitleInputChange = (e) => {
+    const val = e.target.value;
+    setJobTitle(val);
+    setJobTitleTouched(true);
+  };
+
+  const handleCompanyNameInputChange = (e) => {
+    setCompanyName(e.target.value);
+  };
+
+  const handleJobDescInputChange = (e) => {
+    setJobDescription(e.target.value);
+    setJobDescTouched(true);
+  };
+
+  // Field validation logic (Job Title & Job Description checked against effective DOM & State values)
+  const effectiveTitle = getEffectiveJobTitle();
+  const effectiveDesc = getEffectiveJobDescription();
+
+  const isResumeValid = Boolean(resumeFile || activeResumeFile || activeResumeAnalysis);
+  const isJobTitleValid = Boolean(effectiveTitle && effectiveTitle.length >= 2);
+  const isJobDescriptionValid = Boolean(effectiveDesc && effectiveDesc.length >= 10);
   const isFormValid = isResumeValid && isJobTitleValid && isJobDescriptionValid;
 
   const showResumeError = !isResumeValid && (hasSubmitted || resumeTouched);
@@ -43,45 +94,52 @@ export const JobMatcherWorkspace = ({ onAnalyzeMatch, analyzing, initialResumeFi
 
   // Loading progress steps
   const loadingSteps = [
-    'Reading Resume',
-    'Extracting Skills',
-    'Understanding Job Description',
-    'Comparing Skills',
-    'Calculating Match',
-    'Generating Recommendations'
+    'Scanning target job description requirements...',
+    'Extracting required technical skills & experience levels...',
+    'Comparing resume content against job keywords...',
+    'Generating tailored ATS match analysis report...'
   ];
 
   useEffect(() => {
-    let interval;
-    if (analyzing) {
+    if (!analyzing) {
       setCurrentStep(0);
-      interval = setInterval(() => {
-        setCurrentStep((prev) => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
-      }, 600);
-    } else {
-      setCurrentStep(0);
+      return;
     }
+    const interval = setInterval(() => {
+      setCurrentStep((prev) => (prev < loadingSteps.length - 1 ? prev + 1 : prev));
+    }, 1200);
     return () => clearInterval(interval);
   }, [analyzing]);
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-    if (analyzing) return;
-
     setHasSubmitted(true);
-    if (!isFormValid) return;
 
-    if (!(resumeFile instanceof File)) {
-      setResumeTouched(true);
-      return;
-    }
+    const finalTitle = getEffectiveJobTitle();
+    const finalCompany = getEffectiveCompanyName();
+    const finalDesc = getEffectiveJobDescription();
 
-    if (onAnalyzeMatch) {
+    // Ensure state is synchronized before triggering analysis callback
+    if (finalTitle !== jobTitle) setJobTitle(finalTitle);
+    if (finalCompany !== companyName) setCompanyName(finalCompany);
+    if (finalDesc !== jobDescription) setJobDescription(finalDesc);
+
+    const validSubmission = Boolean(isResumeValid && finalTitle.length >= 2 && finalDesc.length >= 10);
+
+    if (validSubmission && !analyzing) {
+      let fileToPass = resumeFile || activeResumeFile;
+      if (!fileToPass && activeResumeAnalysis) {
+        const fn = activeResumeAnalysis.filename || activeResumeAnalysis.originalName || 'Resume_Document.pdf';
+        const fileText = activeResumeAnalysis.rawText || activeResumeAnalysis.executiveSummary || 'Parsed resume text';
+        const blob = new Blob([fileText], { type: 'application/pdf' });
+        fileToPass = new File([blob], fn, { type: 'application/pdf' });
+      }
+
       onAnalyzeMatch({
-        resumeFile,
-        jobTitle: jobTitle.trim() || 'Target Position',
-        companyName: companyName.trim(),
-        jobDescription: jobDescription.trim()
+        resumeFile: fileToPass,
+        jobTitle: finalTitle || activeResumeAnalysis?.candidateLevel || 'Target Position',
+        companyName: finalCompany,
+        jobDescription: finalDesc
       });
     }
   };
@@ -100,70 +158,18 @@ Requirements:
   return (
     <div className="w-full space-y-8 animate-fadeIn">
       
-      {/* Standardized Left-Aligned Header (Matching Skill Gap & Roadmap / Resume Analyzer 1:1) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#30363D]">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-xs font-semibold text-blue-400 mb-2">
-            <Target className="w-3.5 h-3.5" />
-            <span>AI Job Description Matcher</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Job Description Matcher
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Compare your resume directly against target job postings to uncover missing ATS keywords, skill gaps, and custom tailoring advice.
-          </p>
-        </div>
-      </div>
+      {/* Standardized Page Header */}
+      <PageHeader
+        title="Job Matcher"
+        subtitle="Compare your resume against any job description."
+        backTo="/app/dashboard"
+        backLabel="Back to Dashboard"
+      />
 
-      {/* Processing State: Progress Steps Loading Indicator */}
-      {analyzing ? (
-        <div className="space-y-8 animate-fadeIn" role="status" aria-live="polite">
-          <div className="bg-[#161B22] border border-blue-500/30 rounded-2xl p-6 sm:p-8 text-center max-w-xl mx-auto shadow-2xl">
-            <div className="w-14 h-14 rounded-2xl bg-blue-600/10 border border-blue-500/30 flex items-center justify-center mx-auto mb-5 text-blue-400">
-              <Sparkles className="w-7 h-7 animate-spin" />
-            </div>
-
-            <h3 className="text-lg font-extrabold text-white mb-4 tracking-tight">
-              Analyzing Job Description Alignment...
-            </h3>
-
-            {/* 6 Step Indicators */}
-            <div className="space-y-2.5 max-w-sm mx-auto text-left">
-              {loadingSteps.map((stepText, idx) => {
-                const isDone = idx < currentStep;
-                const isCurrent = idx === currentStep;
-
-                return (
-                  <div
-                    key={idx}
-                    className={`flex items-center gap-3 p-3 rounded-xl border text-xs transition-all duration-300 ${
-                      isDone
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 font-semibold'
-                        : isCurrent
-                        ? 'bg-blue-600/20 border-blue-500/40 text-blue-200 font-extrabold animate-pulse'
-                        : 'bg-[#0D1117] border-[#30363D] text-gray-500 opacity-50'
-                    }`}
-                  >
-                    {isDone ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    ) : isCurrent ? (
-                      <Loader2 className="w-4 h-4 text-blue-400 animate-spin flex-shrink-0" />
-                    ) : (
-                      <div className="w-4 h-4 rounded-full border border-gray-600 flex-shrink-0" />
-                    )}
-                    <span>{stepText}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Linear Dashboard Form matching Skill Gap & Roadmap */
-        <form onSubmit={handleFormSubmit} className="space-y-6" aria-label="Job Matcher Form">
+      {/* Linear Dashboard Form matching Skill Gap & Roadmap */}
+      <form onSubmit={handleFormSubmit} className="space-y-6" aria-label="Job Matcher Form">
           
-          {/* SECTION 1: Resume PDF Selection */}
+          {/* SECTION 1: Candidate Resume Selection */}
           <div className="bg-[#161B22] border border-[#30363D] rounded-2xl p-6 sm:p-8 space-y-4 shadow-xl">
             <div className="flex items-center gap-3 pb-3 border-b border-[#30363D]">
               <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
@@ -171,22 +177,69 @@ Requirements:
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">1. Candidate Resume PDF</h3>
-                <p className="text-xs text-gray-400">Upload your resume to compare against target qualifications</p>
+                <p className="text-xs text-gray-400">Selected workspace resume for target job comparison</p>
               </div>
             </div>
 
-            <ResumeUploader 
-              initialFile={initialResumeFile}
-              onUploadComplete={(file) => {
-                setResumeFile(file);
-                setResumeTouched(true);
-              }} 
-            />
+            {/* Active Workspace Resume Selected Card */}
+            {activeResumeAnalysis && !isChangingResume ? (
+              <div className="bg-[#0D1117] border border-blue-500/30 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold flex-shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-white">
+                        {activeResumeAnalysis.filename || 'Active_Resume.pdf'}
+                      </h4>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                        {activeResumeAnalysis.atsScore || activeResumeAnalysis.resumeScore || 85} ATS Score
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-600/10 border border-blue-500/30 text-blue-400">
+                        Active Workspace Resume
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Role: <strong className="text-gray-300 font-semibold">{activeResumeAnalysis.candidateLevel || 'Software Engineer'}</strong> • Analyzed {activeResumeAnalysis.formattedDate || 'Recently'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsChangingResume(true)}
+                  className="px-3 py-1.5 bg-[#161B22] hover:bg-[#21262d] text-gray-300 hover:text-white border border-[#30363D] text-xs font-semibold rounded-xl transition-colors cursor-pointer self-end sm:self-auto flex-shrink-0"
+                >
+                  Change Resume
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <ResumeUploader 
+                  initialFile={initialResumeFile || activeResumeFile}
+                  onUploadComplete={(file) => {
+                    setResumeFile(file);
+                    setResumeTouched(true);
+                    setIsChangingResume(false);
+                  }} 
+                />
+                {activeResumeAnalysis && (
+                  <button
+                    type="button"
+                    onClick={() => setIsChangingResume(false)}
+                    className="text-xs text-blue-400 hover:underline font-semibold block"
+                  >
+                    ← Use active workspace resume ({activeResumeAnalysis.filename})
+                  </button>
+                )}
+              </div>
+            )}
 
             {showResumeError && (
               <div className="flex items-center gap-2 text-rose-400 text-xs font-medium pt-1 animate-fadeIn" role="alert">
                 <AlertCircle className="w-3.5 h-3.5" />
-                <span>Please upload a PDF resume.</span>
+                <span>Please select or upload a PDF resume.</span>
               </div>
             )}
           </div>
@@ -211,13 +264,16 @@ Requirements:
                 </label>
                 <input
                   id="target-job-title"
+                  name="jobTitle"
                   type="text"
+                  autoComplete="on"
                   value={jobTitle}
-                  onChange={(e) => {
-                    setJobTitle(e.target.value);
+                  onChange={handleJobTitleInputChange}
+                  onInput={handleJobTitleInputChange}
+                  onBlur={(e) => {
+                    handleJobTitleInputChange(e);
                     setJobTitleTouched(true);
                   }}
-                  onBlur={() => setJobTitleTouched(true)}
                   placeholder="e.g. Senior Frontend Engineer..."
                   disabled={analyzing}
                   className={`w-full px-4 py-3 rounded-xl bg-[#0D1117] border text-white text-sm focus:outline-none transition-colors disabled:opacity-50 ${
@@ -239,9 +295,13 @@ Requirements:
                 </label>
                 <input
                   id="target-company-name"
+                  name="companyName"
                   type="text"
+                  autoComplete="on"
                   value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
+                  onChange={handleCompanyNameInputChange}
+                  onInput={handleCompanyNameInputChange}
+                  onBlur={handleCompanyNameInputChange}
                   placeholder="e.g. Google, Microsoft, Meta..."
                   disabled={analyzing}
                   className="w-full px-4 py-3 rounded-xl bg-[#0D1117] border border-[#30363D] focus:border-blue-500 text-white text-sm focus:outline-none transition-colors disabled:opacity-50"
@@ -255,12 +315,14 @@ Requirements:
               </label>
               <textarea
                 id="target-job-description"
+                name="jobDescription"
                 rows={7}
                 value={jobDescription}
-                onBlur={() => setJobDescTouched(true)}
-                onChange={(e) => {
-                  setJobDescription(e.target.value);
-                  if (e.target.value.trim().length >= 10) setJobDescTouched(true);
+                onChange={handleJobDescInputChange}
+                onInput={handleJobDescInputChange}
+                onBlur={(e) => {
+                  handleJobDescInputChange(e);
+                  setJobDescTouched(true);
                 }}
                 placeholder={jobDescriptionPlaceholder}
                 disabled={analyzing}
@@ -303,7 +365,6 @@ Requirements:
           </div>
 
         </form>
-      )}
 
     </div>
   );

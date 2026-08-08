@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { db, auth } from '../config/firebase';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { useAuth } from './AuthContext';
 
 const WORKSPACE_STORAGE_KEY = 'career_pilot_workspace_v1';
 
@@ -15,6 +18,8 @@ const initialWorkspaceState = {
 const WorkspaceContext = createContext(null);
 
 export const WorkspaceProvider = ({ children }) => {
+  const { user } = useAuth();
+
   const [workspace, setWorkspaceState] = useState(() => {
     try {
       const saved = localStorage.getItem(WORKSPACE_STORAGE_KEY);
@@ -49,7 +54,84 @@ export const WorkspaceProvider = ({ children }) => {
     }
   });
 
-  // In-Memory Shared File Handle for Guided Workflows (Not serialized to localStorage)
+  // Active Workspace Resume Selection State (Synced with Firestore)
+  const [activeResumeId, setActiveResumeIdState] = useState(() => {
+    try {
+      return localStorage.getItem('career_pilot_active_resume_id_v1') || null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Function to set and sync activeResumeId to Firestore & localStorage (Idempotent)
+  const setActiveResumeId = async (id, moduleName = 'resume-report') => {
+    if (id && activeResumeId === id) {
+      return; // Skip redundant updates if already active
+    }
+
+    setActiveResumeIdState(id);
+    try {
+      if (id) {
+        localStorage.setItem('career_pilot_active_resume_id_v1', id);
+      } else {
+        localStorage.removeItem('career_pilot_active_resume_id_v1');
+      }
+    } catch (e) {}
+
+    try {
+      const user = auth.currentUser;
+      if (user?.uid) {
+        const docRef = doc(db, 'users', user.uid, 'workspaceData', 'careerpilot');
+        await setDoc(docRef, {
+          activeResumeId: id || null,
+          lastOpenedModule: moduleName || 'resume-report',
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+    } catch (err) {
+      console.warn("Firestore activeResumeId sync notice:", err);
+    }
+  };
+
+  // Listen to Firestore updates for cross-device & browser refresh persistence
+  const currentUid = user?.uid;
+  useEffect(() => {
+    if (!currentUid) return;
+
+    const docRef = doc(db, 'users', currentUid, 'workspaceData', 'careerpilot');
+    const unsub = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.activeResumeId) {
+          setActiveResumeIdState((prev) => (prev !== data.activeResumeId ? data.activeResumeId : prev));
+        }
+        if (Array.isArray(data.roadmaps) && data.roadmaps.length > 0) {
+          setWorkspaceState((prev) => {
+            if (JSON.stringify(prev.roadmaps) === JSON.stringify(data.roadmaps)) {
+              return prev; // Prevent state update loop
+            }
+            return { ...prev, roadmaps: data.roadmaps };
+          });
+        }
+      }
+    }, (err) => {
+      console.warn("Firestore active workspace listener notice:", err);
+    });
+
+    return () => unsub();
+  }, [currentUid]);
+
+  // Derived Active Resume Object (Computed from Single Source of Truth resumeHistory)
+  const activeResumeAnalysis = useMemo(() => {
+    if (!workspace.resumeHistory || workspace.resumeHistory.length === 0) return null;
+    if (activeResumeId) {
+      const found = workspace.resumeHistory.find(h => h.id === activeResumeId);
+      if (found) return found;
+    }
+    return workspace.resumeHistory[0] || null;
+  }, [workspace.resumeHistory, activeResumeId]);
+
+  // In-Memory Shared File Handle & Roadmap Seed
   const [activeResumeFile, setActiveResumeFile] = useState(null);
   const [roadmapSeed, setRoadmapSeedState] = useState(null);
 
@@ -73,7 +155,7 @@ export const WorkspaceProvider = ({ children }) => {
     setRoadmapSeedState(null);
   };
 
-  // Sync workspace state to localStorage on any modification
+  // Sync workspace state to localStorage only (No reactive setDoc loop!)
   useEffect(() => {
     try {
       localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(workspace));
@@ -119,6 +201,9 @@ export const WorkspaceProvider = ({ children }) => {
         atsScore: newAnalysis.atsScore || score
       };
 
+      // Auto-set as active workspace resume
+      setActiveResumeId(id, 'resume-report');
+
       // Filter out any matching existing item to guarantee 1 unique entry per contentHash in history
       const filtered = prev.resumeHistory.filter(h => h.id !== id && (hash ? h.contentHash !== hash : true));
       const updatedHistory = [itemToSave, ...filtered];
@@ -143,6 +228,9 @@ export const WorkspaceProvider = ({ children }) => {
   };
 
   const deleteResumeAnalysis = (id) => {
+    if (id === activeResumeId) {
+      setActiveResumeId(null);
+    }
     setWorkspaceState((prev) => {
       const deletedItem = prev.resumeHistory.find(item => item.id === id);
       const updatedHistory = prev.resumeHistory.filter(item => item.id !== id);
@@ -163,14 +251,19 @@ export const WorkspaceProvider = ({ children }) => {
         activities: updatedActivities
       };
     });
+    // Synchronize in-memory activeResumeFile reference
+    setActiveResumeFile(null);
   };
 
   const clearResumeHistory = () => {
+    setActiveResumeId(null);
     setWorkspaceState((prev) => ({
       ...prev,
       resumeHistory: [],
       activities: prev.activities.filter(act => act.type !== 'resume')
     }));
+    // Synchronize in-memory activeResumeFile reference
+    setActiveResumeFile(null);
   };
 
   // Job Match Actions
@@ -249,6 +342,18 @@ export const WorkspaceProvider = ({ children }) => {
 
       const filteredRoadmaps = prev.roadmaps.filter(r => r.roadmapId !== roadmapId);
       const updatedRoadmaps = [roadmapObj, ...filteredRoadmaps];
+
+      // Perform one-shot Firestore write for roadmap update
+      try {
+        const user = auth.currentUser;
+        if (user?.uid) {
+          const docRef = doc(db, 'users', user.uid, 'workspaceData', 'careerpilot');
+          setDoc(docRef, {
+            roadmaps: updatedRoadmaps,
+            updatedAt: timestamp
+          }, { merge: true }).catch(() => {});
+        }
+      } catch (e) {}
 
       const newActivity = {
         id: `act_${Date.now()}`,
@@ -517,6 +622,9 @@ export const WorkspaceProvider = ({ children }) => {
         updateRoadmapProgress,
         deleteRoadmap,
         clearRoadmaps,
+        activeResumeId,
+        activeResumeAnalysis,
+        setActiveResumeId,
         activeResumeFile,
         setSharedResumeFile,
         clearSharedResumeFile,

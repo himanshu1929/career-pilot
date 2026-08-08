@@ -8,10 +8,15 @@ import { DashboardHeader } from './features/dashboard/DashboardHeader';
 import { ScoreOverview } from './features/dashboard/ScoreOverview';
 import { QuickActions } from './features/dashboard/QuickActions';
 import { RecentActivity } from './features/dashboard/RecentActivity';
+import { ProfilePage } from './pages/ProfilePage';
 import { ResumePage } from './pages/ResumePage';
 import { JobMatchPage } from './pages/JobMatchPage';
 import { RoadmapPage } from './pages/RoadmapPage';
 import { InterviewPage } from './pages/InterviewPage';
+
+import { GettingStarted } from './features/dashboard/GettingStarted';
+
+import { PageContainer } from './components/layout/PageContainer';
 
 const DashboardOverview = () => {
   const navigate = useNavigate();
@@ -26,12 +31,12 @@ const DashboardOverview = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <DashboardHeader onActionClick={handleNavigateTab} />
+    <PageContainer>
+      <DashboardHeader />
+      <GettingStarted onNavigate={handleNavigateTab} />
       <ScoreOverview onNavigate={handleNavigateTab} />
-      <QuickActions onNavigate={handleNavigateTab} />
       <RecentActivity onNavigate={handleNavigateTab} />
-    </div>
+    </PageContainer>
   );
 };
 
@@ -78,6 +83,7 @@ export function App() {
         <Route path="/app" element={<AppLayout onGoHome={() => navigate('/')} />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardOverview />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="resume-analyzer" element={<ResumePage />} />
           <Route path="job-matcher" element={<JobMatchPage />} />
           <Route path="roadmap" element={<RoadmapPage />} />

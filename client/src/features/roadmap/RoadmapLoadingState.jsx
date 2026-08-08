@@ -1,92 +1,77 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, CheckCircle2, Loader2 } from 'lucide-react';
-
-const LOADING_STEPS = [
-  'Reading your current skills',
-  'Understanding your target role',
-  'Comparing with industry requirements...',
-  'Detecting missing skills...',
-  'Organizing learning phases...',
-  'Selecting practical projects...',
-  'Recommending learning resources...',
-  'Estimating learning timeline...',
-  'Finalizing roadmap...'
-];
+import { Sparkles } from 'lucide-react';
 
 export const RoadmapLoadingState = ({ targetRole }) => {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [progressPercent, setProgressPercent] = useState(12);
+  const [statusIndex, setStatusIndex] = useState(0);
+
+  const statusMessages = [
+    "Analyzing your current skills...",
+    "Comparing skills with your target role...",
+    "Identifying your biggest skill gaps...",
+    "Building your learning path...",
+    "Selecting practical projects...",
+    "Finalizing your roadmap..."
+  ];
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentStep((prev) => (prev < LOADING_STEPS.length - 1 ? prev + 1 : prev));
-    }, 1200);
+    // Smooth progress bar increment timer
+    const progressInterval = setInterval(() => {
+      setProgressPercent((prev) => {
+        if (prev >= 94) return 94;
+        return prev + Math.floor(Math.random() * 6) + 4;
+      });
+    }, 400);
 
-    return () => clearInterval(interval);
-  }, []);
+    // Single rotating status message timer
+    const statusInterval = setInterval(() => {
+      setStatusIndex((prev) => (prev + 1) % statusMessages.length);
+    }, 2000);
+
+    return () => {
+      clearInterval(progressInterval);
+      clearInterval(statusInterval);
+    };
+  }, [statusMessages.length]);
 
   return (
-    <div className="w-full py-8 space-y-8 animate-fadeIn max-w-2xl mx-auto">
-      
-      {/* Centered Reasoning Container Card */}
-      <div className="bg-[#161B22] border border-purple-500/30 rounded-2xl p-6 sm:p-10 text-center space-y-6 shadow-2xl">
+    <div className="w-full py-12 sm:py-16 flex items-center justify-center animate-fadeIn px-4">
+      {/* Focused Single Loading Card (Max width 640px) */}
+      <div className="w-full max-w-[640px] bg-[#161B22] border border-purple-500/30 rounded-2xl p-8 sm:p-10 text-center space-y-7 shadow-2xl transition-all duration-300">
         
-        {/* Animated AI Icon Header */}
-        <div className="w-16 h-16 rounded-2xl bg-purple-600/10 border border-purple-500/30 flex items-center justify-center mx-auto text-purple-400 shadow-lg">
-          <Sparkles className="w-8 h-8 animate-spin" />
+        {/* Animated AI / Roadmap Icon */}
+        <div className="w-16 h-16 rounded-2xl bg-purple-600/10 border border-purple-500/30 flex items-center justify-center mx-auto text-purple-400 shadow-xl">
+          <Sparkles className="w-8 h-8 animate-pulse text-purple-400" />
         </div>
 
         {/* Title & Subtitle */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-xs font-bold text-purple-400 mb-1">
-            🤖 AI Roadmap Generator
-          </div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-            Generating Your Personalized Learning Roadmap
+            Building your learning roadmap
           </h2>
-          <p className="text-xs text-gray-400 leading-relaxed max-w-md mx-auto">
-            Our AI is analyzing your current skills, comparing them with industry expectations for <strong className="text-white">{targetRole}</strong>, identifying missing technologies, and building a personalized learning journey.
+          <p className="text-xs sm:text-sm text-gray-400 font-normal leading-relaxed max-w-md mx-auto">
+            We're analyzing your current skills and target role to create a personalized learning path.
           </p>
         </div>
 
-        {/* AI Progress Timeline Checklist */}
-        <div className="space-y-2.5 max-w-md mx-auto text-left pt-2">
-          {LOADING_STEPS.map((stepText, idx) => {
-            const isDone = idx < currentStep;
-            const isCurrent = idx === currentStep;
+        {/* Single Smooth Progress Bar & Rotating Status Text */}
+        <div className="space-y-3 pt-2 max-w-md mx-auto">
+          <div className="w-full bg-[#0D1117] h-2.5 rounded-full overflow-hidden border border-[#30363D] relative">
+            <div
+              className="bg-gradient-to-r from-purple-600 to-blue-500 h-full rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+            />
+          </div>
 
-            return (
-              <div
-                key={idx}
-                className={`flex items-center gap-3 p-3 rounded-xl border text-xs transition-all duration-300 ${
-                  isDone
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 font-semibold'
-                    : isCurrent
-                    ? 'bg-purple-600/20 border-purple-500/40 text-purple-200 font-extrabold animate-pulse'
-                    : 'bg-[#0D1117] border-[#30363D] text-gray-500 opacity-40'
-                }`}
-              >
-                {isDone ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                ) : isCurrent ? (
-                  <Loader2 className="w-4 h-4 text-purple-400 animate-spin flex-shrink-0" />
-                ) : (
-                  <div className="w-4 h-4 rounded-full border border-gray-600 flex-shrink-0" />
-                )}
-                <span>{stepText}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Indeterminate Animated Progress Bar */}
-        <div className="pt-2">
-          <div className="w-full bg-[#0D1117] h-2 rounded-full overflow-hidden border border-[#30363D]">
-            <div className="bg-purple-600 h-full rounded-full animate-pulse w-full" />
+          {/* Single Rotating Status Message (One Visible at a time) */}
+          <div className="h-6 flex items-center justify-center">
+            <p key={statusIndex} className="text-xs sm:text-sm text-purple-300 font-mono font-medium animate-fadeIn">
+              {statusMessages[statusIndex]}
+            </p>
           </div>
         </div>
 
       </div>
-
     </div>
   );
 };

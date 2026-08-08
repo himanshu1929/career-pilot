@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useProfile } from '../context/ProfileContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   Compass, 
   ArrowRight, 
@@ -20,17 +21,26 @@ import {
 export const OnboardingPage = () => {
   const navigate = useNavigate();
   const { profile, updateProfile } = useProfile();
+  const { user } = useAuth();
 
   // If already completed onboarding, redirect straight to dashboard
   if (profile?.completedOnboarding) {
     navigate('/app/dashboard', { replace: true });
   }
 
+  const googleName = user?.displayName || user?.email?.split('@')[0] || '';
+
   const [step, setStep] = useState(1);
-  const [name, setName] = useState(profile?.name || '');
+  const [name, setName] = useState(profile?.name || googleName);
   const [goal, setGoal] = useState(profile?.goal || 'Get a Job');
   const [experience, setExperience] = useState(profile?.experience || 'Student');
   const [nameError, setNameError] = useState('');
+
+  useEffect(() => {
+    if (!name && googleName) {
+      setName(googleName);
+    }
+  }, [googleName, name]);
 
   const goalsList = [
     { id: 'Get a Job', title: 'Get a Job', desc: 'Find relevant target roles and optimize applications', icon: Briefcase },
@@ -61,14 +71,20 @@ export const OnboardingPage = () => {
   };
 
   const handleFinishOnboarding = () => {
+    const finalName = name.trim() || user?.displayName || 'CareerPilot User';
     updateProfile({
-      name: name.trim(),
+      name: finalName,
+      email: user?.email || '',
+      photoURL: user?.photoURL || '',
+      uid: user?.uid || '',
       goal,
       experience,
       completedOnboarding: true
     });
     navigate('/app/dashboard', { replace: true });
   };
+
+  const currentDisplayName = user?.displayName || name || 'there';
 
   return (
     <div className="min-h-screen bg-[#0D1117] text-gray-100 flex flex-col justify-between p-4 sm:p-6 lg:p-8 selection:bg-blue-600 selection:text-white relative overflow-hidden">
@@ -98,7 +114,7 @@ export const OnboardingPage = () => {
       <div className="max-w-xl mx-auto w-full my-auto py-12">
         <AnimatePresence mode="wait">
           
-          {/* STEP 1 — WELCOME & NAME */}
+          {/* STEP 1 — DISPLAY NAME */}
           {step === 1 && (
             <motion.div
               key="step1"
@@ -110,7 +126,7 @@ export const OnboardingPage = () => {
             >
               <div className="space-y-2">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  Welcome to CareerPilot 👋
+                  Welcome, {currentDisplayName} 👋
                 </h1>
                 <p className="text-sm text-gray-400 leading-relaxed">
                   Let's personalize your workspace. This only takes a few seconds.
@@ -120,7 +136,7 @@ export const OnboardingPage = () => {
               <form onSubmit={handleStep1Submit} className="space-y-6">
                 <div className="space-y-2">
                   <label htmlFor="user-name-input" className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
-                    What should we call you?
+                    You can change your display name if you'd like.
                   </label>
                   <input
                     id="user-name-input"

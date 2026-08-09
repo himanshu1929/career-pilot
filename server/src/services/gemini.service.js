@@ -1398,3 +1398,462 @@ const generateFallbackRoadmap = (targetRole = 'Software Engineer', currentSkills
     ]
   };
 };
+
+// ============================================================
+// AI MOCK INTERVIEW ENGINE
+// ============================================================
+
+const INTERVIEW_QUESTION_SYSTEM_PROMPT = `
+You are an expert technical interviewer conducting a realistic job interview.
+
+Your job is to generate ONE highly relevant interview question for the candidate.
+
+The question MUST be personalized using:
+1. Target role
+2. Professional experience level
+3. Resume context
+4. Candidate's demonstrated skills
+5. Candidate's projects/experience when available
+6. Interview type
+7. Difficulty
+8. Previous questions and answers
+
+IMPORTANT:
+- Do NOT generate generic questions when resume context allows personalization.
+- Do NOT assume the candidate knows a technology simply because it is common for the role.
+- Do NOT ask senior-level architecture questions to students unless their demonstrated knowledge justifies it.
+- Do NOT ask beginner syntax questions to senior candidates unless there is an identified gap.
+- If the resume mentions a project, prefer asking about decisions, implementation, trade-offs, challenges, testing, debugging, architecture, or outcomes from that project.
+- If the candidate has professional experience, use that experience when appropriate.
+- If the interview type is Technical, prioritize technical questions.
+- If the interview type is Behavioral, prioritize behavioral/STAR questions.
+- If the interview type is Mixed, alternate intelligently between technical, project, problem-solving, and behavioral questions.
+- Use previous answers to decide what should be probed next.
+- Avoid repeating previously asked questions.
+- A follow-up question should investigate something meaningful from the candidate's previous answer.
+- The question should sound like something a real interviewer would ask.
+
+EXPERIENCE LEVEL GUIDELINES:
+
+Student / Intern / Career Switcher:
+- Fundamentals
+- Projects
+- Practical implementation
+- Basic debugging
+- Learning ability
+- Foundational behavioral questions
+
+Entry Level (0-2 years experience):
+- Core technical knowledge
+- Practical development
+- APIs/data/testing
+- Debugging
+- Project decisions
+- Basic production awareness
+
+Junior Level (1-2 years experience):
+- Independent feature development
+- Debugging
+- Testing
+- Performance
+- Security
+- Architecture fundamentals
+- Real-world trade-offs
+
+Mid-level (3-4 years experience):
+- Architecture
+- Scalability
+- Reliability
+- Performance
+- Production incidents
+- Technical ownership
+- Engineering trade-offs
+
+Senior (5+ years experience):
+- System architecture
+- Scalability
+- Reliability
+- Security
+- Technical leadership
+- Architecture trade-offs
+- Production ownership
+- Mentoring
+- Strategic engineering decisions
+
+Return ONLY valid JSON.
+
+Required structure:
+
+{
+  "question": "<single interview question>",
+  "category": "<Technical | Project | Problem Solving | Behavioral | System Design>",
+  "topic": "<specific topic>",
+  "difficulty": "<Easy | Medium | Hard>",
+  "contextNote": "<short explanation of why this question is relevant, without revealing internal scoring logic>"
+}
+`;
+
+const INTERVIEW_TURN_SYSTEM_PROMPT = `
+You are an expert technical interviewer evaluating a candidate's answer and deciding the next interview question.
+
+You must evaluate the candidate's ACTUAL answer. Never invent achievements, experience, or technical knowledge that the candidate did not demonstrate.
+
+Evaluate:
+- Technical accuracy
+- Communication
+- Problem solving
+- Confidence/clarity
+- Depth appropriate to the candidate's experience level
+
+Then generate the next question based on:
+- The candidate's resume
+- Target role
+- Experience level
+- Interview type
+- Difficulty
+- Current answer
+- Previous interview history
+
+IMPORTANT:
+- The next question must NOT repeat a previous question.
+- If the answer reveals a weakness, the next question may probe that weakness.
+- If the answer demonstrates strong knowledge, increase depth appropriately.
+- If the candidate mentions an interesting technology/project/decision, use it for a follow-up.
+- Do not punish a candidate simply for not using specific keywords.
+- Evaluate meaning and technical correctness, not keyword density.
+- For behavioral answers, evaluate structure, ownership, reasoning, and outcome.
+- Respect the selected experience level.
+
+Return ONLY valid JSON.
+
+Required structure:
+
+{
+  "evaluation": {
+    "status": "VALID | PARTIAL | IRRELEVANT | INVALID | EMPTY",
+    "score": 0,
+    "breakdown": {
+      "technicalAccuracy": 0,
+      "communication": 0,
+      "problemSolving": 0,
+      "confidence": 0
+    },
+    "feedback": "<specific feedback>",
+    "reason": "<why this score was given>",
+    "strengths": ["<specific strength>"],
+    "improvements": ["<specific improvement>"],
+    "keyTakeaway": "<one concise takeaway>",
+    "evidence": ["<specific evidence from the candidate's answer>"]
+  },
+  "transition": "<natural one-sentence interviewer response>",
+  "nextQuestion": {
+    "question": "<single next interview question>",
+    "category": "<Technical | Project | Problem Solving | Behavioral | System Design>",
+    "topic": "<specific topic>",
+    "difficulty": "<Easy | Medium | Hard>",
+    "contextNote": "<short contextual note>"
+  }
+}
+`;
+
+const cleanGeminiJson = (text) => {
+  let output = (text || '').trim();
+
+  if (output.startsWith('```')) {
+    output = output
+      .replace(/^```(?:json)?\n?/, '')
+      .replace(/\n?```$/, '')
+      .trim();
+  }
+
+  return output;
+};
+
+const clampScore = (value, fallback = 0) => {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(number)));
+};
+
+const sanitizeInterviewQuestion = (data, fallbackRole = 'Software Engineer') => {
+  return {
+    question:
+      typeof data?.question === 'string' && data.question.trim()
+        ? data.question.trim()
+        : `Tell me about a technically challenging problem you solved while working toward a ${fallbackRole} role.`,
+    category: data?.category || 'Technical',
+    topic: data?.topic || 'Technical Problem Solving',
+    difficulty: data?.difficulty || 'Medium',
+    contextNote:
+      data?.contextNote ||
+      'This question evaluates your practical understanding and problem-solving approach.'
+  };
+};
+
+const sanitizeInterviewEvaluation = (data) => {
+  const evaluation = data?.evaluation || {};
+
+  return {
+    status: evaluation.status || 'VALID',
+    score: clampScore(evaluation.score, 70),
+    breakdown: {
+      technicalAccuracy: clampScore(evaluation.breakdown?.technicalAccuracy, 70),
+      communication: clampScore(evaluation.breakdown?.communication, 70),
+      problemSolving: clampScore(evaluation.breakdown?.problemSolving, 70),
+      confidence: clampScore(evaluation.breakdown?.confidence, 70)
+    },
+    feedback:
+      evaluation.feedback ||
+      'Your response was understandable, but more technical detail and concrete reasoning would strengthen it.',
+    reason:
+      evaluation.reason ||
+      'Evaluation was based on the technical relevance, correctness, depth, and clarity of the submitted response.',
+    strengths: Array.isArray(evaluation.strengths)
+      ? evaluation.strengths.slice(0, 4)
+      : [],
+    improvements: Array.isArray(evaluation.improvements)
+      ? evaluation.improvements.slice(0, 4)
+      : [],
+    keyTakeaway:
+      evaluation.keyTakeaway ||
+      'Explain your reasoning with concrete technical details and examples.',
+    evidence: Array.isArray(evaluation.evidence)
+      ? evaluation.evidence.slice(0, 5)
+      : []
+  };
+};
+
+export const generateInterviewQuestionWithGemini = async ({
+  targetRole,
+  experienceLevel,
+  interviewType,
+  difficulty,
+  resumeContext,
+  persona,
+  questionIndex = 0,
+  previousHistory = []
+}) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey === 'your_gemini_api_key_here') {
+    return {
+      question: `Tell me about a technically challenging problem you solved for a ${targetRole || 'Software Engineer'} role and how you approached it.`,
+      category: 'Problem Solving',
+      topic: 'Technical Problem Solving',
+      difficulty: difficulty || 'Medium',
+      contextNote: 'This question evaluates your practical problem-solving ability.'
+    };
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+
+    const prompt = `
+${INTERVIEW_QUESTION_SYSTEM_PROMPT}
+
+CANDIDATE INFORMATION
+
+Target Role:
+${targetRole || 'Software Engineer'}
+
+Experience Level:
+${experienceLevel || 'Entry Level (0-2 years experience)'}
+
+Interview Type:
+${interviewType || 'Mixed'}
+
+Selected Difficulty:
+${difficulty || 'Medium'}
+
+Interviewer Persona:
+${persona?.name || 'Interviewer'} - ${persona?.title || 'Technical Interviewer'}
+Tone:
+${persona?.tone || 'professional'}
+
+Resume Context:
+${JSON.stringify(resumeContext || {}, null, 2)}
+
+Question Number:
+${Number(questionIndex) + 1}
+
+Previous Interview History:
+${JSON.stringify(previousHistory || [], null, 2)}
+
+Generate the next question now.
+`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.45
+      }
+    });
+
+    const jsonOutput = JSON.parse(cleanGeminiJson(response.text || '{}'));
+
+    return sanitizeInterviewQuestion(jsonOutput, targetRole);
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      console.error('[Gemini Interview Quota]:', error.message);
+
+      const quotaErr = new Error(
+        'The AI interview service has reached its temporary usage limit. Please try again later.'
+      );
+
+      quotaErr.status = 429;
+      quotaErr.errorType = 'QUOTA_EXCEEDED';
+
+      throw quotaErr;
+    }
+
+    console.error('Error generating interview question:', error);
+
+    return {
+      question: `Tell me about a challenging technical problem you solved for a ${targetRole || 'Software Engineer'} role. What was your approach and what did you learn?`,
+      category: 'Problem Solving',
+      topic: 'Technical Problem Solving',
+      difficulty: difficulty || 'Medium',
+      contextNote: 'This question evaluates your practical engineering approach.'
+    };
+  }
+};
+
+export const processInterviewTurnWithGemini = async ({
+  targetRole,
+  experienceLevel,
+  interviewType,
+  difficulty,
+  resumeContext,
+  persona,
+  currentQuestion,
+  answer,
+  previousHistory = [],
+  questionIndex = 0
+}) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey || apiKey === 'YOUR_API_KEY_HERE' || apiKey === 'your_gemini_api_key_here') {
+    return {
+      evaluation: {
+        status: 'VALID',
+        score: 70,
+        breakdown: {
+          technicalAccuracy: 70,
+          communication: 70,
+          problemSolving: 70,
+          confidence: 70
+        },
+        feedback: 'Your answer was submitted successfully. Add more concrete technical details and examples to make your reasoning stronger.',
+        reason: 'Fallback evaluation because the Gemini API is not configured.',
+        strengths: ['Attempted the question'],
+        improvements: ['Provide more specific technical reasoning and examples'],
+        keyTakeaway: 'Support your answer with concrete implementation details.',
+        evidence: []
+      },
+      transition: 'Thanks for explaining that. Let’s build on your answer with the next question.',
+      nextQuestion: {
+        question: `What would you consider the most important technical trade-off when working as a ${targetRole || 'Software Engineer'}?`,
+        category: 'Problem Solving',
+        topic: 'Technical Trade-offs',
+        difficulty: difficulty || 'Medium',
+        contextNote: 'This explores your engineering decision-making.'
+      }
+    };
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+
+    const prompt = `
+${INTERVIEW_TURN_SYSTEM_PROMPT}
+
+CANDIDATE INFORMATION
+
+Target Role:
+${targetRole || 'Software Engineer'}
+
+Experience Level:
+${experienceLevel || 'Entry Level (0-2 years experience)'}
+
+Interview Type:
+${interviewType || 'Mixed'}
+
+Selected Difficulty:
+${difficulty || 'Medium'}
+
+Interviewer:
+${persona?.name || 'Interviewer'} - ${persona?.title || 'Technical Interviewer'}
+
+Resume Context:
+${JSON.stringify(resumeContext || {}, null, 2)}
+
+QUESTION NUMBER:
+${Number(questionIndex) + 1}
+
+CURRENT QUESTION:
+${JSON.stringify(currentQuestion || {}, null, 2)}
+
+CANDIDATE ANSWER:
+${answer || ''}
+
+PREVIOUS HISTORY:
+${JSON.stringify(previousHistory || [], null, 2)}
+
+Evaluate the answer and generate the next adaptive question.
+`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.35
+      }
+    });
+
+    const jsonOutput = JSON.parse(cleanGeminiJson(response.text || '{}'));
+
+    return {
+      evaluation: sanitizeInterviewEvaluation(jsonOutput),
+      transition:
+        typeof jsonOutput?.transition === 'string' && jsonOutput.transition.trim()
+          ? jsonOutput.transition.trim()
+          : 'Thanks for explaining that. Let’s continue with the next question.',
+      nextQuestion: sanitizeInterviewQuestion(
+        jsonOutput?.nextQuestion,
+        targetRole
+      )
+    };
+  } catch (error) {
+    console.error('========== GEMINI INTERVIEW TURN ERROR ==========');
+    console.error('Message:', error?.message);
+    console.error('Status:', error?.status);
+    console.error('Code:', error?.code);
+    console.error('Name:', error?.name);
+    console.error('Error Type:', error?.errorType);
+    console.error('Details:', error?.details);
+    console.error('Full Error:', error);
+    console.error('=================================================');
+  
+    if (isQuotaExceededError(error)) {
+      console.error('🚨 GEMINI QUOTA / RATE LIMIT DETECTED');
+  
+      const quotaErr = new Error(
+        'The AI interview service has reached its temporary usage limit. Please try again later.'
+      );
+  
+      quotaErr.status = 429;
+      quotaErr.errorType = 'QUOTA_EXCEEDED';
+  
+      throw quotaErr;
+    }
+  
+    throw error;
+  }
+};

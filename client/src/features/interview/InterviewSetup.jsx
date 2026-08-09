@@ -263,21 +263,57 @@ export const InterviewSetup = ({ onStart, onStartInterview, onViewSavedReport, l
 
   const [selectedRole, setSelectedRole] = useState(initialSelected);
   const [customRole, setCustomRole] = useState(initialCustom);
-  const [experienceLevel, setExperienceLevel] = useState(profile?.experience || 'Working Professional');
+  const [experienceLevel, setExperienceLevel] = useState(
+    profile?.experience || 'Entry Level (0-2 years experience)'
+  );
   const [interviewType, setInterviewType] = useState('Mixed');
   const [difficulty, setDifficulty] = useState('Medium');
   const [questionCount] = useState(10);
   const [selectedPersona, setSelectedPersona] = useState('friendly');
 
   // Extract detected resume skills if available
-  const detectedSkills = (resumeHistory[0]?.missingSkills || [])
-    .map(s => typeof s === 'string' ? s : s.name)
-    .concat((resumeHistory[0]?.strengths || []).map(s => typeof s === 'string' ? s : s.title))
-    .filter(Boolean);
+  // const detectedSkills = (resumeHistory[0]?.missingSkills || [])
+  //   .map(s => typeof s === 'string' ? s : s.name)
+  //   .concat((resumeHistory[0]?.strengths || []).map(s => typeof s === 'string' ? s : s.title))
+  //   .filter(Boolean);
 
-  const displaySkills = detectedSkills.length > 0
-    ? Array.from(new Set(detectedSkills)).slice(0, 5)
-    : ['TypeScript', 'React', 'REST APIs', 'Git', 'SQL'];
+  // const displaySkills = detectedSkills.length > 0
+  //   ? Array.from(new Set(detectedSkills)).slice(0, 5)
+  //   : ['TypeScript', 'React', 'REST APIs', 'Git', 'SQL'];
+  const activeResume = resumeHistory[0] || null;
+
+const detectedSkills = [
+  ...(activeResume?.strengths || []),
+  ...(activeResume?.missingSkills || [])
+]
+  .map((skill) => {
+    if (typeof skill === 'string') return skill;
+    return skill?.name || skill?.title || skill?.skill || '';
+  })
+  .filter(Boolean);
+
+const displaySkills = detectedSkills.length > 0
+  ? Array.from(new Set(detectedSkills)).slice(0, 8)
+  : ['TypeScript', 'React', 'REST APIs', 'Git', 'SQL'];
+
+const resumeContext = {
+  filename: activeResume?.filename || '',
+  candidateLevel: activeResume?.candidateLevel || '',
+  executiveSummary: activeResume?.executiveSummary || '',
+  strengths: activeResume?.strengths || [],
+  weaknesses: activeResume?.weaknesses || [],
+  missingSkills: activeResume?.missingSkills || [],
+  recommendations: activeResume?.recommendations || [],
+
+  // These are used automatically if your resume analyzer
+  // stores them in the future.
+  projects: activeResume?.projects || [],
+  experience: activeResume?.experience || [],
+  education: activeResume?.education || [],
+  certifications: activeResume?.certifications || [],
+
+  skills: displaySkills
+};
 
   const activePersonaObj = PERSONA_CONFIGS.find(p => p.id === selectedPersona) || PERSONA_CONFIGS[0];
 
@@ -295,7 +331,7 @@ export const InterviewSetup = ({ onStart, onStartInterview, onViewSavedReport, l
         difficulty,
         questionCount,
         personaId: selectedPersona,
-        resumeSkills: displaySkills
+        resumeContext
       });
     }
   };
@@ -333,7 +369,8 @@ export const InterviewSetup = ({ onStart, onStartInterview, onViewSavedReport, l
 
           <div className="space-y-3">
             <p className="text-xs text-gray-300">
-              Questions will be generated using key skills extracted from your resume:
+  Your interview is personalized using your resume, target role,
+  experience level, skills, projects, and professional background.
             </p>
             
             <div className="flex flex-wrap gap-1.5">
@@ -346,6 +383,9 @@ export const InterviewSetup = ({ onStart, onStartInterview, onViewSavedReport, l
                 </span>
               ))}
             </div>
+            <p className="text-[11px] text-gray-500 pt-1">
+  Questions will adapt to your experience level and previous answers.
+</p>
 
             <div className="text-[11px] font-mono text-gray-400 pt-1">
               Resume: <strong className="text-gray-200">{resumeHistory[0]?.filename || 'Uploaded_Resume.pdf'}</strong>
@@ -459,7 +499,7 @@ export const InterviewSetup = ({ onStart, onStartInterview, onViewSavedReport, l
             <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
               Experience Level
             </label>
-            <select
+            {/* <select
               value={experienceLevel}
               onChange={(e) => setExperienceLevel(e.target.value)}
               className="w-full px-4 py-3 rounded-xl bg-[#0D1117] border border-[#30363D] text-white text-xs font-semibold focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
@@ -468,7 +508,32 @@ export const InterviewSetup = ({ onStart, onStartInterview, onViewSavedReport, l
               <option value="Working Professional">Working Professional (1-3 YOE)</option>
               <option value="Senior Developer">Senior Engineer (4+ YOE)</option>
               <option value="Tech Lead / Staff">Tech Lead / Staff Engineer</option>
-            </select>
+            </select> */}
+            <select
+  value={experienceLevel}
+  onChange={(e) => setExperienceLevel(e.target.value)}
+  className="w-full px-4 py-3 rounded-xl bg-[#0D1117] border border-[#30363D] text-white text-xs font-semibold focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+>
+  <option value="Student / Intern / Career Switcher">
+    Student / Intern / Career Switcher
+  </option>
+
+  <option value="Entry Level (0-2 years experience)">
+    Entry Level (0-2 years experience)
+  </option>
+
+  <option value="Junior Level (1-2 years experience)">
+    Junior Level (1-2 years experience)
+  </option>
+
+  <option value="Mid-level (3-4 years experience)">
+    Mid-level (3-4 years experience)
+  </option>
+
+  <option value="Senior (5+ years experience)">
+    Senior (5+ years experience)
+  </option>
+</select>
           </div>
 
         </div>

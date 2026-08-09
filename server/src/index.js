@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import resumeRoutes from './routes/resume.routes.js';
 import jobMatchRoutes from './routes/jobMatch.routes.js';
 import roadmapRoutes from './routes/roadmap.routes.js';
+import interviewRoutes from './routes/interview.routes.js';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use(express.json());
 app.use('/api/resume', resumeRoutes);
 app.use('/api/job-match', jobMatchRoutes);
 app.use('/api/roadmap', roadmapRoutes);
+app.use('/api/interview', interviewRoutes);
 
 // Base health route
 app.get('/api/health', (req, res) => {

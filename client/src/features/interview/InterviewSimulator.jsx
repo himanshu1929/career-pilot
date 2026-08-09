@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { 
-  getPersonaObj, 
-  getConversationalTransition, 
-  generateNextAdaptiveQuestion, 
-  evaluateAnswerRealistic 
+import {
+  getPersonaObj,
+  generateNextAdaptiveQuestion,
+  processInterviewTurn
 } from '../../utils/interviewGenerator';
 import { 
   Mic, 
@@ -38,68 +37,88 @@ export const InterviewSimulator = ({ setupData, onFinish }) => {
   const progressPercent = Math.round(((questionIndex + 1) / totalCount) * 100);
   const wordCount = userAnswer.trim() ? userAnswer.trim().split(/\s+/).length : 0;
 
-  const handleBeginInterview = () => {
+  const handleBeginInterview = async () => {
     setHasStartedIntro(true);
-    // Generate initial adaptive Question 1
-    const q1 = generateNextAdaptiveQuestion({
-      setupData,
-      questionIndex: 0,
-      previousHistory: [],
-      persona
-    });
-    setCurrentQuestion(q1);
+    setIsSubmitting(true);
+  
+    try {
+      const q1 = await generateNextAdaptiveQuestion({
+        setupData,
+        questionIndex: 0,
+        previousHistory: [],
+        persona
+      });
+  
+      setCurrentQuestion(q1);
+    } catch (error) {
+      console.error('Failed to start interview:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSubmitAnswer = async () => {
-    if (!userAnswer.trim()) return;
+ const handleSubmitAnswer = async () => {
+  if (!userAnswer.trim() || !currentQuestion || isSubmitting) {
+    return;
+  }
 
-    setIsSubmitting(true);
+  setIsSubmitting(true);
 
-    // Evaluate answer secretly in background without showing scores to user
-    const evaluation = evaluateAnswerRealistic(
+  try {
+    const result = await processInterviewTurn({
+      setupData,
       currentQuestion,
-      userAnswer,
-      persona.difficulty
-    );
+      answer: userAnswer,
+      previousHistory: history,
+      questionIndex,
+      persona
+    });
 
     const historyItem = {
       question: currentQuestion,
-      answer: userAnswer,
-      feedback: evaluation
+      answer: userAnswer.trim(),
+      feedback: result.evaluation
     };
 
     const updatedHistory = [...history, historyItem];
+
     setHistory(updatedHistory);
 
-    // Get realistic human conversational transition from interviewer
-    const transitionMsg = getConversationalTransition(userAnswer, persona.name);
-    setInterviewerResponse(transitionMsg);
+    setInterviewerResponse(
+      result.transition ||
+      'Thanks for explaining that. Let’s continue with the next question.'
+    );
+
+    setCurrentQuestion({
+      ...result.nextQuestion,
+      questionText: result.nextQuestion.question,
+      question: result.nextQuestion.question
+    });
+
+  } catch (error) {
+    console.error('Failed to process interview answer:', error);
+
+    setInterviewerResponse(
+      'I had trouble processing that response. Please try again.'
+    );
+  } finally {
     setIsSubmitting(false);
-  };
+  }
+};
 
-  const handleProceedToNext = () => {
-    const nextIdx = questionIndex + 1;
+const handleProceedToNext = () => {
+  const nextIdx = questionIndex + 1;
 
-    if (nextIdx < totalCount) {
-      setQuestionIndex(nextIdx);
-      setUserAnswer('');
-      setInterviewerResponse(null);
-
-      // Generate Question nextIdx adaptively using candidate's previous answer context
-      const nextQ = generateNextAdaptiveQuestion({
-        setupData,
-        questionIndex: nextIdx,
-        previousHistory: history,
-        persona
-      });
-      setCurrentQuestion(nextQ);
-    } else {
-      // Completed all questions! Present final comprehensive report
-      if (handleFinishInterview) {
-        handleFinishInterview(history);
-      }
+  if (nextIdx < totalCount) {
+    setQuestionIndex(nextIdx);
+    setUserAnswer('');
+    setInterviewerResponse(null);
+  } else {
+    if (handleFinishInterview) {
+      handleFinishInterview(history);
     }
-  };
+  }
+};
 
   return (
     <div className="w-full space-y-6 animate-fadeIn">

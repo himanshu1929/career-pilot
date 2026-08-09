@@ -1,9 +1,10 @@
 // AI Mock Interview Engine — Conversational Human Simulator, Adaptive Flow & Strict Evidence Evaluation
-
 import sarahAvatar from '../assets/interviewers/sarah.jpg';
 import alexAvatar from '../assets/interviewers/alex.jpg';
 import davidAvatar from '../assets/interviewers/david.jpg';
 import elenaAvatar from '../assets/interviewers/elena.jpg';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const INTERVIEW_PERSONAS = [
   {
@@ -183,117 +184,129 @@ export const getConversationalTransition = (answerText, personaName = 'Interview
 };
 
 // Domain-Specific Questions Generator
-export const generateNextAdaptiveQuestion = ({ setupData, questionIndex = 0, previousHistory = [], persona }) => {
-  const role = setupData?.targetRole || 'Frontend Developer';
-  const difficulty = setupData?.difficulty || 'Medium';
-
-  const domainQuestionBank = {
-    'Frontend Developer': [
+export const generateNextAdaptiveQuestion = async ({
+  setupData,
+  questionIndex = 0,
+  previousHistory = [],
+  persona
+}) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/interview/question`,
       {
-        id: 'fe_1',
-        topic: 'React Core & Virtual DOM',
-        question: "Can you explain how React's Virtual DOM reconciliation process works and how keys help optimize list rendering performance?",
-        type: 'technical'
-      },
-      {
-        id: 'fe_2',
-        topic: 'State Management & Optimization',
-        question: "When managing application state in a large frontend codebase, how do you decide between local React state, Context API, and global state managers like Redux or Zustand?",
-        type: 'technical'
-      },
-      {
-        id: 'fe_3',
-        topic: 'Performance & Web Vitals',
-        question: "Imagine a web app is experiencing slow initial loads and laggy UI interactions. What tools and techniques would you use to diagnose and improve Largest Contentful Paint (LCP) and Interaction to Next Paint (INP)?",
-        type: 'technical'
-      },
-      {
-        id: 'fe_4',
-        topic: 'Behavioral & Project Trade-offs',
-        question: "Tell me about a time when you had to make a tough technical compromise due to a strict deadline. What was the situation, what trade-offs did you accept, and how did it turn out?",
-        type: 'behavioral'
-      },
-      {
-        id: 'fe_5',
-        topic: 'CSS Architecture & Responsive Layouts',
-        question: "How do you structure modern CSS in scalable applications? Explain your approach to responsive layouts, container queries, and design token consistency.",
-        type: 'technical'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          targetRole: setupData?.targetRole || 'Software Engineer',
+          experienceLevel:
+            setupData?.experienceLevel ||
+            'Entry Level (0-2 years experience)',
+          interviewType: setupData?.interviewType || 'Mixed',
+          difficulty: setupData?.difficulty || 'Medium',
+          resumeContext: setupData?.resumeContext || {},
+          persona: persona
+            ? {
+                id: persona.id,
+                name: persona.name,
+                title: persona.title,
+                tone: persona.tone
+              }
+            : null,
+          questionIndex,
+          previousHistory
+        })
       }
-    ],
-    'Backend Engineer (Java/Spring)': [
-      {
-        id: 'be_1',
-        topic: 'Spring Boot Dependency Injection',
-        question: "How does Dependency Injection and Inversion of Control (IoC) work in Spring Boot, and what is the difference between @Component, @Service, and @Repository annotations?",
-        type: 'technical'
-      },
-      {
-        id: 'be_2',
-        topic: 'REST API & JPA Performance',
-        question: "What is the N+1 select problem in Spring Data JPA/Hibernate, and what strategies do you use to resolve it in high-throughput backend services?",
-        type: 'technical'
-      },
-      {
-        id: 'be_3',
-        topic: 'Microservices & Database Transactions',
-        question: "How do you manage distributed transactions across multiple microservices without causing database deadlocks or data inconsistency?",
-        type: 'technical'
-      },
-      {
-        id: 'be_4',
-        topic: 'Behavioral & Outage Incident',
-        question: "Describe a production outage or critical backend bug you experienced. How did you identify the root cause under pressure, and what preventive measures did you implement afterward?",
-        type: 'behavioral'
-      }
-    ]
-  };
+    );
 
-  const defaultQuestions = [
-    {
-      id: 'gen_1',
-      topic: 'Domain Architecture & System Design',
-      question: `For a ${role} role, how do you structure modular components or service layers to ensure clean separation of concerns and testability?`,
-      type: 'technical'
-    },
-    {
-      id: 'gen_2',
-      topic: 'API Design & Asynchronous Data',
-      question: "How do you handle asynchronous data fetching, error boundaries, and retry strategies in production systems?",
-      type: 'technical'
-    },
-    {
-      id: 'gen_3',
-      topic: 'Security & Authentication',
-      question: "What security best practices do you enforce in client-server communications (e.g. JWT tokens, CORS, XSS prevention)?",
-      type: 'technical'
-    },
-    {
-      id: 'gen_4',
-      topic: 'Behavioral STAR Scenario',
-      question: "Tell me about a situation where you had a strong technical disagreement with a teammate. How did you resolve the conflict while maintaining momentum?",
-      type: 'behavioral'
-    },
-    {
-      id: 'gen_5',
-      topic: 'System Scalability & Monitoring',
-      question: "How do you monitor application health in production, and what metrics trigger your alerts?",
-      type: 'technical'
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message ||
+        result.error ||
+        'Unable to generate interview question.'
+      );
     }
-  ];
 
-  const pool = domainQuestionBank[role] || defaultQuestions;
-  const targetQ = pool[questionIndex % pool.length] || defaultQuestions[0];
+    return {
+      ...result.data,
+      questionIndex: questionIndex + 1,
+      questionText: result.data.question,
+      question: result.data.question,
+      category: result.data.category || 'Technical',
+      topic: result.data.topic || 'Domain Knowledge'
+    };
 
-  return {
-    ...targetQ,
-    questionText: targetQ.question || targetQ.questionText || `For a ${role} role, how do you structure modular components or service layers to ensure clean separation of concerns and testability?`,
-    question: targetQ.question || targetQ.questionText || `For a ${role} role, how do you structure modular components or service layers to ensure clean separation of concerns and testability?`,
-    category: targetQ.topic || targetQ.category || "Domain Knowledge",
-    topic: targetQ.topic || targetQ.category || "Domain Knowledge",
-    questionIndex: questionIndex + 1,
-    difficulty
-  };
+  } catch (error) {
+    console.error('Interview question generation failed:', error);
+
+    return {
+      id: `fallback_${questionIndex}`,
+      questionText:
+        `Tell me about a technically challenging problem you solved for a ${
+          setupData?.targetRole || 'Software Engineer'
+        } role.`,
+      question:
+        `Tell me about a technically challenging problem you solved for a ${
+          setupData?.targetRole || 'Software Engineer'
+        } role.`,
+      category: 'Problem Solving',
+      topic: 'Technical Problem Solving',
+      difficulty: setupData?.difficulty || 'Medium',
+      questionIndex: questionIndex + 1,
+      contextNote:
+        'This question evaluates your practical engineering approach.'
+    };
+  }
 };
+
+export const processInterviewTurn = async ({
+  setupData,
+  currentQuestion,
+  answer,
+  previousHistory = [],
+  questionIndex = 0,
+  persona
+}) => {
+  const response = await fetch(
+    `${API_BASE_URL}/api/interview/turn`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        targetRole: setupData?.targetRole || 'Software Engineer',
+        experienceLevel:
+          setupData?.experienceLevel ||
+          'Entry Level (0-2 years experience)',
+        interviewType: setupData?.interviewType || 'Mixed',
+        difficulty: setupData?.difficulty || 'Medium',
+        resumeContext: setupData?.resumeContext || {},
+        persona,
+        currentQuestion,
+        answer,
+        previousHistory,
+        questionIndex
+      })
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    throw new Error(
+      result.message ||
+      result.error ||
+      'Unable to process interview answer.'
+    );
+  }
+
+  return result.data;
+};
+
 
 // Strict Pre-Validation & Gibberish / Nonsense Detector
 export const detectNonsense = (text) => {
@@ -320,6 +333,11 @@ export const detectNonsense = (text) => {
   if (/^(.)\1+$/.test(lower)) {
     return { isNonsense: true, type: 'INVALID' };
   }
+
+  // 3. Repetitive Noob Detection 💀
+// if (/\bno{2,}b\b/i.test(lower)) {
+//   return { isNonsense: true, type: 'INVALID' };
+// }
 
   const smashPatterns = [
     /^[asdfghjkl;']{4,}$/i,

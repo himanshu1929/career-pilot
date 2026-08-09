@@ -27,10 +27,9 @@ import {
   ChevronUp,
   Upload
 } from 'lucide-react';
-
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 export const ResumePage = () => {
   const { resumeHistory, addResumeAnalysis, deleteResumeAnalysis, clearResumeHistory, activeResumeFile, setSharedResumeFile } = useWorkspace();
-
   const [uploadedFile, setUploadedFile] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -140,7 +139,7 @@ export const ResumePage = () => {
         const formData = new FormData();
         formData.append('resume', file);
 
-        const response = await fetch('/api/resume/upload', {
+        const response = await fetch(`${API_URL}/api/resume/upload`, {
           method: 'POST',
           body: formData
         });

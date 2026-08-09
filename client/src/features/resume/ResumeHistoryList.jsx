@@ -319,7 +319,7 @@ export const ResumeHistoryList = ({
                 : 'Upload your first resume to begin building your AI career profile.'}
             </p>
           </div>
-          {!(searchTerm || filterTier !== 'All') && onToggleUploader && (
+          {/* {!(searchTerm || filterTier !== 'All') && onToggleUploader && (
             <button
               onClick={onToggleUploader}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-md shadow-blue-500/20"
@@ -327,7 +327,7 @@ export const ResumeHistoryList = ({
               <Plus className="w-3.5 h-3.5" />
               <span>Upload Resume</span>
             </button>
-          )}
+          )} */}
         </div>
       )}
 

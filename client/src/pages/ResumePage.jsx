@@ -360,7 +360,7 @@ export const ResumePage = () => {
           backTo="/app/dashboard"
           backLabel="Back to Dashboard"
           actions={
-            !analyzing && (
+            !analyzing && hasHistory && (
               <>
                 <button
                   onClick={() => setIsUploaderOpen((prev) => !prev)}
@@ -519,13 +519,13 @@ export const ResumePage = () => {
                     <Upload className="w-3.5 h-3.5" />
                     <span>Upload New Resume Version</span>
                   </h3>
-                  <button
+                  {/* <button
                     onClick={() => setIsUploaderOpen(false)}
                     className="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <span>Collapse</span>
                     <ChevronUp className="w-3.5 h-3.5" />
-                  </button>
+                  </button> */}
                 </div>
               )}
 

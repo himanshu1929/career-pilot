@@ -259,13 +259,13 @@ ${recommendations.map((r, i) => `${i + 1}. ${typeof r === 'string' ? r : r.title
         backLabel="Back to Resumes"
         actions={
           <>
-            <button
+            {/* <button
               onClick={handleContinueToJobMatcher}
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 flex items-center gap-2 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
             >
               <span>Continue to Job Matcher</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </button> */}
 
             <button
               onClick={onReset}

@@ -133,47 +133,123 @@ export const ResumePage = () => {
       setAnalyzing(true);
       setCurrentStep(0);
 
+      // let rawAnalysis;
+
+      // try {
+      //   const formData = new FormData();
+      //   formData.append('resume', file);
+
+      //   const response = await fetch(`${API_URL}/api/resume/upload`, {
+      //     method: 'POST',
+      //     body: formData
+      //   });
+
+      //   if (response.status === 429) {
+      //     setIsQuotaExceeded(true);
+      //     setError("The AI service has reached its temporary usage limit. Please try again later.");
+      //     setAnalyzing(false);
+      //     return;
+      //   }
+
+      //   if (!response.ok) {
+      //     let errorMsg = "Failed to analyze resume. Please try again later.";
+      //     try {
+      //       const errorData = await response.json();
+      //       if (errorData && errorData.message) {
+      //         errorMsg = errorData.message;
+      //       }
+      //     } catch (e) {}
+      //     setError(errorMsg);
+      //     setAnalyzing(false);
+      //     return;
+      //   }
+
+      //   const data = await response.json();
+      //   if (data && data.success && data.data) {
+      //     rawAnalysis = data.data;
+      //   } else {
+      //     rawAnalysis = mockResumeAnalysis;
+      //   }
+      // } catch (err) {
+      //   console.warn("Express backend API offline or unreachable. Using fallback AI evaluation.", err);
+      //   rawAnalysis = mockResumeAnalysis;
+      // }
       let rawAnalysis;
 
-      try {
-        const formData = new FormData();
-        formData.append('resume', file);
+try {
+  const formData = new FormData();
+  formData.append('resume', file);
 
-        const response = await fetch(`${API_URL}/api/resume/upload`, {
-          method: 'POST',
-          body: formData
-        });
+  const response = await fetch(`${API_URL}/api/resume/upload`, {
+    method: 'POST',
+    body: formData
+  });
 
-        if (response.status === 429) {
-          setIsQuotaExceeded(true);
-          setError("The AI service has reached its temporary usage limit. Please try again later.");
-          setAnalyzing(false);
-          return;
-        }
+  // Handle AI quota / rate limit
+  if (response.status === 429) {
+    setIsQuotaExceeded(true);
+    setError(
+      "The AI service has reached its temporary usage limit. Please try again later."
+    );
+    setAnalyzing(false);
+    return;
+  }
 
-        if (!response.ok) {
-          let errorMsg = "Failed to analyze resume. Please try again later.";
-          try {
-            const errorData = await response.json();
-            if (errorData && errorData.message) {
-              errorMsg = errorData.message;
-            }
-          } catch (e) {}
-          setError(errorMsg);
-          setAnalyzing(false);
-          return;
-        }
+  // Handle any backend error
+  if (!response.ok) {
+    let errorMsg = "Failed to analyze resume. Please try again later.";
 
-        const data = await response.json();
-        if (data && data.success && data.data) {
-          rawAnalysis = data.data;
-        } else {
-          rawAnalysis = mockResumeAnalysis;
-        }
-      } catch (err) {
-        console.warn("Express backend API offline or unreachable. Using fallback AI evaluation.", err);
-        rawAnalysis = mockResumeAnalysis;
+    try {
+      const errorData = await response.json();
+
+      if (errorData?.message) {
+        errorMsg = errorData.message;
+      } else if (errorData?.error) {
+        errorMsg = errorData.error;
       }
+    } catch (e) {
+      // Ignore JSON parsing errors and use default message
+    }
+
+    console.error(
+      `Resume analysis API failed with status ${response.status}:`,
+      errorMsg
+    );
+
+    setError(errorMsg);
+    setAnalyzing(false);
+    return;
+  }
+
+  const data = await response.json();
+
+  // IMPORTANT:
+  // Never use mock/fallback analysis for a real resume.
+  // Only accept a genuine backend analysis response.
+  if (!data?.success || !data?.data) {
+    console.error("Invalid resume analysis response:", data);
+
+    setError(
+      "The resume analysis service returned an invalid response. Please try again."
+    );
+    setAnalyzing(false);
+    return;
+  }
+
+  rawAnalysis = data.data;
+
+} catch (err) {
+  // Backend unavailable / network error.
+  // DO NOT use mockResumeAnalysis here.
+  console.error("Resume analysis API unavailable:", err);
+
+  setError(
+    "Unable to connect to the resume analysis service. Please try again in a moment."
+  );
+
+  setAnalyzing(false);
+  return;
+}
 
       // Guarantee smooth loading step transition (minimum 1.2s)
       await new Promise((resolve) => setTimeout(resolve, 1200));

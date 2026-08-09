@@ -10,8 +10,18 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Allowed frontend origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://career-pilot-six-kappa.vercel.app'
+];
+
 // Middleware setup
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
+
 app.use(express.json());
 
 // API Routes
@@ -21,7 +31,10 @@ app.use('/api/roadmap', roadmapRoutes);
 
 // Base health route
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'CareerPilot Express API Gateway' });
+  res.json({
+    status: 'ok',
+    service: 'CareerPilot Express API Gateway'
+  });
 });
 
 // App bootstrap

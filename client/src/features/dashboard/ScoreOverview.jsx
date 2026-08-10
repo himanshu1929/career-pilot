@@ -124,55 +124,8 @@ export const ScoreOverview = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* Card 3: Mock Interview */}
-      <div 
-        onClick={() => onNavigate('interview')}
-        className="group bg-[#161B22] hover:bg-[#1c2128] rounded-xl p-5 border border-[#30363D] hover:border-amber-500/50 flex flex-col justify-between space-y-4 transition-all cursor-pointer hover:-translate-y-1 shadow-sm hover:shadow-md h-full"
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
-              Mock Interview
-            </span>
-            {interviewCount > 0 ? (
-              <h3 className="text-3xl font-extrabold text-white mt-1">
-                {safeInterviewScore}<span className="text-sm text-gray-400 font-normal">%</span>
-              </h3>
-            ) : (
-              <h3 className="text-xl font-bold text-gray-400 mt-1">
-                Not Started
-              </h3>
-            )}
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
-            <Mic className="w-5 h-5" />
-          </div>
-        </div>
 
-        <div>
-          {interviewCount > 0 ? (
-            <div className="space-y-2">
-              <div className="text-xs text-gray-400 flex items-center justify-between">
-                <span>Interviews Taken: <strong className="text-white font-bold">{interviewCount}</strong></span>
-                <span className="text-amber-400 font-bold">Completed</span>
-              </div>
-              <div className="w-full bg-[#0D1117] h-1.5 rounded-full overflow-hidden border border-[#30363D]">
-                <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, safeInterviewScore))}%` }} />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-gray-400 leading-snug">Practice interactive AI technical & behavioral questions.</p>
-              <div className="text-xs font-medium text-amber-400 group-hover:text-amber-300 flex items-center gap-1">
-                <span>Practice Interview</span>
-                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Card 4: Learning Roadmap */}
+      {/* Card 3: Learning Roadmap */}
       <div 
         onClick={() => onNavigate('roadmap')}
         className="group bg-[#161B22] hover:bg-[#1c2128] rounded-xl p-5 border border-[#30363D] hover:border-purple-500/50 flex flex-col justify-between space-y-4 transition-all cursor-pointer hover:-translate-y-1 shadow-sm hover:shadow-md h-full"
@@ -213,6 +166,53 @@ export const ScoreOverview = ({ onNavigate }) => {
               <p className="text-xs text-gray-400 leading-snug">Generate your personalized step-by-step learning roadmap.</p>
               <div className="text-xs font-medium text-purple-400 group-hover:text-purple-300 flex items-center gap-1">
                 <span>Generate Roadmap</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+        {/* Card 4: Mock Interview */}
+        <div 
+        onClick={() => onNavigate('interview')}
+        className="group bg-[#161B22] hover:bg-[#1c2128] rounded-xl p-5 border border-[#30363D] hover:border-amber-500/50 flex flex-col justify-between space-y-4 transition-all cursor-pointer hover:-translate-y-1 shadow-sm hover:shadow-md h-full"
+      >
+        <div className="flex justify-between items-start">
+          <div>
+            <span className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
+              Mock Interview
+            </span>
+            {interviewCount > 0 ? (
+              <h3 className="text-3xl font-extrabold text-white mt-1">
+                {safeInterviewScore}<span className="text-sm text-gray-400 font-normal">%</span>
+              </h3>
+            ) : (
+              <h3 className="text-xl font-bold text-gray-400 mt-1">
+                Not Started
+              </h3>
+            )}
+          </div>
+          <div className="w-10 h-10 rounded-lg bg-amber-600/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+            <Mic className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div>
+          {interviewCount > 0 ? (
+            <div className="space-y-2">
+              <div className="text-xs text-gray-400 flex items-center justify-between">
+                <span>Interviews Taken: <strong className="text-white font-bold">{interviewCount}</strong></span>
+                <span className="text-amber-400 font-bold">Completed</span>
+              </div>
+              <div className="w-full bg-[#0D1117] h-1.5 rounded-full overflow-hidden border border-[#30363D]">
+                <div className="bg-amber-500 h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, safeInterviewScore))}%` }} />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-400 leading-snug">Practice interactive AI technical & behavioral questions.</p>
+              <div className="text-xs font-medium text-amber-400 group-hover:text-amber-300 flex items-center gap-1">
+                <span>Practice Interview</span>
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
